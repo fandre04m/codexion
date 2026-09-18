@@ -10,25 +10,25 @@
 #                                                                              #
 # **************************************************************************** #
 
-NAME = codexion.a
+NAME = codexion
 
-SRC = test.c
+SRC = main.c utils.c
 
 OBJ = $(SRC:.c=.o)
 
 RM = rm -rf
 
-CFLAGS = -Wall -Wextra -Werror
+CC = cc
 
-AR = ar rcs
+CFLAGS = -Wall -Wextra -Werror
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	$(AR) $(NAME) $(OBJ)
+	$(CC) $(CFLAGS) $(OBJ) -o $(NAME)
 
 %.o: %.c
-	cc $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	$(RM) $(OBJ)

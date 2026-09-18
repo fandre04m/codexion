@@ -12,10 +12,12 @@
 
 #include "codexion.h"
 
-int	main(void)
+int	main(int ac, char **av)
 {
-	printf("I don't remember this at all");
-	fflush(stdout);
-	write(1, "!", 1);
+	if (ac != 8)
+		return (error_msg("Wrong number of arguments."));
+	char	*num_1;
+	num_1 = av[1];
+	printf("%s", num_1);
 	return (0);
 }

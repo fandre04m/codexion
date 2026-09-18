@@ -1,23 +1,18 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   codexion.h                                         :+:      :+:    :+:   */
+/*   utils.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/15 19:25:06 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/09/15 19:25:06 by fandre-m         ###   ########.fr       */
+/*   Created: 2026/09/18 17:07:38 by fandre-m          #+#    #+#             */
+/*   Updated: 2026/09/18 17:07:38 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+#include "codexion.h"
 
-#ifndef CODEXION_H
-# define CODEXION_H
-
-# include <stdio.h>
-# include <unistd.h>
-# include <pthread.h>
-
-/* -------- Utils ---------*/
-int	error_msg(const char *error);
-
-#endif
+int	error_msg(const char *msg)
+{
+	fprintf(stderr, "Error: %s\n", msg);
+	return (1);
+}

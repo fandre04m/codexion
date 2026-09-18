@@ -27,4 +27,9 @@ make re
 
 ## Resources
 
+- [geeksforgeeks tutorial](https://www.geeksforgeeks.org/c/thread-functions-in-c-c/)
+- [w3schools C section](https://www.w3schools.com/c/index.php)
+- [Portfolio Courses Youtube channel](https://www.youtube.com/@PortfolioCourses)
+- [Oceano Youtube channel](https://www.youtube.com/@onaecO)
+
 AI was used to help explain programming concepts, review design choices, identify possible edge cases, and this README.
