@@ -18,7 +18,7 @@ void	parse_input(t_sim *sim, char **av)
 	int	num_len;
 
 	i = 1;
-	while (i++ <= 9)
+	while (i <= 9)
 	{
 		num_len = strlen(av[i]);
 		if (num_len > 10)
@@ -29,5 +29,6 @@ void	parse_input(t_sim *sim, char **av)
 		{
 			sim->n_coders = 5;
 		}
+		i++;
 	}
 }
