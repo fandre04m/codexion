@@ -12,13 +12,37 @@
 
 #include "codexion.h"
 
+/*
+ * Required imput format:
+ *					'5 800 100 100 100 5 50 fifo'
+ *	burnout - compile - debug - refact - n_compiles - cooldown - scheduler
+ *	all these are times in miliseconds, last must be str 'fifo' or 'edf'
+*/
+
 int	main(int ac, char **av)
 {
-	if (ac != 8)
+	t_sim	simulation;
+	if (ac == 9)
+	{
+		// Correct number of args.
+		printf(G "Correct number of args.\n" RST);
+		printf("%s", av[1]);
+		// 1-parsing, fill sim struct values
+		parse_input(&simulation, av);
+		//
+		// 2-create all instances (malloc)
+		// data_init(&simulation); TODO
+		//
+		// 3-Start simulation
+		// simulation_start(&simulation); TODO
+		//
+		// 4-Clean all data (No leaks)
+		// clean_sim(&simulation); TODO
+	}
+	else
+	{
 		return (error_msg("Wrong number of arguments.\n"
 				G"Correct example: '5 800 100 100 100 5 50 fifo'"RST));
-	char	*num_1;
-	num_1 = av[1];
-	printf("%s", num_1);
+	}
 	return (0);
 }

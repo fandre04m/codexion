@@ -12,7 +12,7 @@
 
 NAME = codexion
 
-SRC = main.c utils.c
+SRC = main.c utils.c parsing.c
 
 OBJ = $(SRC:.c=.o)
 
