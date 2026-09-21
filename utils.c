@@ -13,6 +13,6 @@
 
 int	error_msg(const char *msg)
 {
-	fprintf(stderr, "Error: %s\n", msg);
+	fprintf(stderr, R "Error: %s\n" RST, msg);
 	return (1);
 }

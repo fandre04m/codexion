@@ -15,7 +15,8 @@
 int	main(int ac, char **av)
 {
 	if (ac != 8)
-		return (error_msg("Wrong number of arguments."));
+		return (error_msg("Wrong number of arguments.\n"
+				G"Correct example: '5 800 100 100 100 5 50 fifo'"RST));
 	char	*num_1;
 	num_1 = av[1];
 	printf("%s", num_1);
