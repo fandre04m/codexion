@@ -25,8 +25,6 @@ int	main(int ac, char **av)
 	if (ac == 9)
 	{
 		// Correct number of args.
-		printf(G "Correct number of args.\n" RST);
-		printf("%s", av[1]);
 		// 1-parsing, fill sim struct values
 		parse_input(&simulation, av);
 		//

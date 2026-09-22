@@ -18,12 +18,12 @@ void	parse_input(t_sim *sim, char **av)
 	int	num_len;
 
 	i = 1;
-	while (i <= 9)
+	while (i <= 8)
 	{
 		num_len = strlen(av[i]);
 		if (num_len > 10)
 		{
-			error_msg("Argument is bigger than INT_MAX.");
+			error_msg("One or more arguments is bigger than INT_MAX.");
 		}
 		else
 		{
