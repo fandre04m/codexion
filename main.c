@@ -15,18 +15,20 @@
 /*
  * Required imput format:
  *					'5 800 100 100 100 5 50 fifo'
- *	burnout - compile - debug - refact - n_compiles - cooldown - scheduler
+ *	n_coders/burnout/compile/debug/refact/n_compiles/cooldown/scheduler
  *	all these are times in miliseconds, last must be str 'fifo' or 'edf'
-*/
+ */
 
 int	main(int ac, char **av)
 {
 	t_sim	simulation;
+
 	if (ac == 9)
 	{
 		// Correct number of args.
 		// 1-parsing, fill sim struct values
-		parse_input(&simulation, av);
+		if (parse_input(&simulation, av))
+			return (1);
 		//
 		// 2-create all instances (malloc)
 		// data_init(&simulation); TODO

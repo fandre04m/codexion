@@ -13,7 +13,6 @@
 #ifndef CODEXION_H
 # define CODEXION_H
 
-# include <limits.h>
 # include <pthread.h>
 # include <stdio.h>
 # include <stdbool.h>
@@ -76,6 +75,6 @@ typedef struct s_sim
 int		error_msg(const char *error);
 
 /* ------- Parsing --------*/
-void	parse_input(t_sim *sim, char **av);
+int	parse_input(t_sim *sim, char **av);
 
 #endif
