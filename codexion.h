@@ -18,6 +18,7 @@
 # include <stdbool.h>
 # include <unistd.h>
 # include <string.h>
+# include <stdlib.h>
 
 /*
  *  ASNI Escape sequence for bold colored text.
