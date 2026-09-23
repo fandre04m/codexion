@@ -37,25 +37,31 @@
  *	all these are times in miliseconds, last must be str 'fifo' or 'edf'
  */
 
+typedef pthread_mutex_t	t_mtx;
+typedef struct s_sim	t_sim;
+
 /* ------- Structs --------*/
 typedef struct s_dongle
 {
-	bool	in_cooldown;
-	int		id;
+	t_mtx	dongle;
+	int		dongle_id;
+	bool	in_use;
+	long	ready_at;
 }	t_dongle;
 
 typedef struct s_coder
 {
-	int		id;
-	int		n_compiles;
-	bool	all_compiles;
-	int		last_comp_time;
-	// t_dongle	*left_dongle;
-	// t_dongle	*right_dongle;
-	// pthread_t	*thread_id;
+	int			coder_id;
+	int			n_compiles;
+	bool		finished;
+	int			last_comp_time;
+	t_dongle	*left_dongle;
+	t_dongle	*right_dongle;
+	pthread_t	thread_id;
+	t_sim		*sim;
 }	t_coder;
 
-typedef struct s_sim
+struct s_sim
 {
 	int			n_coders;
 	int			time_burnout;
@@ -67,14 +73,14 @@ typedef struct s_sim
 	char		*scheduler;
 	int			start_sim_time;
 	bool		end_sim;
-	// t_dongle	*dongles;
-	// t_coder		*coders;
-}	t_sim;
+	t_dongle	*dongles;
+	t_coder		*coders;
+};
 
 /* -------- Utils ---------*/
 int		error_msg(const char *error);
 
 /* ------- Parsing --------*/
-int	parse_input(t_sim *sim, char **av);
+int		parse_input(t_sim *sim, char **av);
 
 #endif

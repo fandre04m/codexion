@@ -25,8 +25,6 @@ int	main(int ac, char **av)
 
 	if (ac == 9)
 	{
-		// Correct number of args.
-		// 1-parsing, fill sim struct values
 		if (parse_input(&simulation, av))
 			return (1);
 		//
