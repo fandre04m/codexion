@@ -31,13 +31,7 @@
 # define G		"\033[1;32m"	/* Bold green */
 # define W		"\033[1;37m"	/* Bold white */
 
-/*
- * Required imput format:
- *					'5 800 100 100 100 5 50 fifo'
- *	n_coders/burnout/compile/debug/refact/n_compiles/cooldown/scheduler
- *	all these are times in miliseconds, last must be str 'fifo' or 'edf'
- */
-
+// type definitons for convenience of use.
 typedef pthread_mutex_t	t_mtx;
 typedef struct s_sim	t_sim;
 
@@ -83,5 +77,8 @@ int		error_msg(const char *error);
 
 /* ------- Parsing --------*/
 int		parse_input(t_sim *sim, char **av);
+
+/* -------- Init ----------*/
+int		init_data(t_sim *sim);
 
 #endif

@@ -27,10 +27,8 @@ int	main(int ac, char **av)
 	{
 		if (parse_input(&simulation, av))
 			return (1);
-		//
-		// 2-create all instances (malloc)
-		// data_init(&simulation); TODO
-		//
+		// 2-initiate all data, also malloc.
+		init_data(&simulation);
 		// 3-Start simulation
 		// simulation_start(&simulation); TODO
 		//
