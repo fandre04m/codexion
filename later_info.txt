@@ -1,0 +1,62 @@
+ Your dynamically allocated arrays are a good fit. You have a fixed number of coders and
+  dongles for the entire simulation, and IDs map naturally to indices:
+
+  left  = &sim->dongles[coder_id];
+  right = &sim->dongles[(coder_id + 1) % sim->n_coders];
+
+  The complication is not arrays—it’s scheduling. Once cooldowns and FIFO/EDF priority matter,
+  independently locking each dongle becomes insufficient: a coder must be granted both dongles
+  atomically according to the scheduler policy.
+
+  I’d make t_sim own one scheduler mutex and condition variable, and treat the dongle array as
+  scheduler-managed state:
+
+  typedef struct s_sim
+  {
+      t_mtx           sched_mtx;
+      pthread_cond_t  resource_changed;
+      t_dongle        *dongles;
+      t_coder         *coders;
+      unsigned long   next_ticket;
+      ...
+  }   t_sim;
+
+  For each coder, keep fields such as:
+
+  unsigned long  queue_ticket;   // FIFO ordering
+  int64_t        deadline;       // last_compile + time_burnout, for EDF
+  bool           waiting;
+  bool           holds_dongles;
+
+  Then the acquisition protocol is:
+
+  1. A coder locks sched_mtx, marks itself waiting, and records a FIFO ticket.
+  2. It waits on the condition variable until:
+      - both required dongles are unused;
+      - both are past ready_at;
+      - it is the highest-priority eligible waiter (FIFO or earliest deadline).
+
+  3. While still holding sched_mtx, it marks both dongles in use.
+  4. It unlocks the scheduler mutex and compiles.
+  5. On release, it locks sched_mtx, sets each dongle’s ready_at = now + cooldown, marks them
+     free, and broadcasts the condition variable.
+
+  That makes cooldown and priority decisions consistent and prevents the classic “holds one
+  fork while waiting forever for the other” problem.
+
+  A few header-level refinements:
+
+  - in_use and ready_at don’t need an individual dongle mutex if all access happens under
+    sim->sched_mtx.
+
+  - Use a monotonic int64_t millisecond timestamp rather than long; monotonic time avoids
+    system-clock changes affecting cooldowns/deadlines.
+
+  - last_comp_time should be a timestamp type, not int.
+  - scheduler is okay as a string for parsing, but an enum is safer internally.
+  - With a modest fixed n_coders, selecting the best eligible waiter by scanning the coder
+    array is simple and perfectly viable. A priority queue is only worth adding if the project
+    explicitly targets larger simulations.
+
+  So: retain the arrays. Centralize allocation/scheduling around them instead of letting coder
+  threads negotiate dongles independently.
