@@ -35,7 +35,7 @@ static int	ft_atoi(const char *nptr, int *value)
 	while (ft_isdigit(*nptr))
 	{
 		if (sum > (INT_MAX - (*nptr - '0')) / 10)
-			return (error_msg("One or more arguments exceed INT_MAX."));
+			return (error_msg("One or more Argument exceeding INT_MAX detected."));
 		sum = (sum * 10) + (*nptr - '0');
 		nptr++;
 	}
@@ -71,6 +71,8 @@ int	parse_input(t_sim *sim, char **av)
 			return (1);
 		i++;
 	}
+    if (sim->n_coders == 0)
+        return (error_msg("At least one coder is required."));
 	if (validate_scheduler(av[8]))
 		return (1);
 	sim->scheduler = av[8];
