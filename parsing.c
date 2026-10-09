@@ -64,12 +64,11 @@ int	parse_input(t_sim *sim, char **av)
 	fields[4] = &sim->time_refact;
 	fields[5] = &sim->req_compiles;
 	fields[6] = &sim->dongle_cooldown;
-	i = 0;
-	while (i <= 6)
+	i = -1;
+	while (++i < 7)
 	{
 		if (ft_atoi(av[i + 1], fields[i]))
 			return (1);
-		i++;
 	}
 	if (sim->n_coders == 0)
 		return (error_msg("At least one coder is required."));
