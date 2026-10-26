@@ -6,7 +6,7 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/15 19:25:06 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/09/15 19:25:06 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/10/26 19:30:54 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,19 +36,24 @@ typedef pthread_mutex_t	t_mtx;
 typedef struct s_sim	t_sim;
 
 /*--------- Enum ----------*/
-typedef enum e_opcode
+
+typedef enum e_mutex_op
 {
-	CREATE,
-	JOIN,
-	INIT,
-	LOCK,
-	UNLOCK,
-	DESTROY,
-	WAIT,
-	TIMEDWAIT,
-	SIGNAL,
-	BROADCAST,
-}	t_opcode;
+	M_INIT,
+	M_LOCK,
+	M_UNLOCK,
+	M_DESTROY
+}	t_mutex_op;
+
+typedef enum e_cond_op
+{
+	C_INIT,
+	C_DESTROY,
+	C_WAIT,
+	C_TIMEDWAIT,
+	C_SIGNAL,
+	C_BROADCAST
+}	t_cond_op;
 
 /*-------- Structs --------*/
 typedef struct s_dongle
