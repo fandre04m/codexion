@@ -6,13 +6,35 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/26 18:14:02 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/10/27 15:27:41 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/10/27 16:21:39 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 #include <pthread.h>
 #include <unistd.h>
+
+static int	mutex_error_handle(int status, t_mutex_op op)
+{
+	const char	*msg;
+
+	if (status == EAGAIN && op == M_INIT)
+		msg = "System lacked necessary resources (other than memory)"
+			" to init another mutex.";
+	else if (status == ENOMEM && op == M_INIT)
+		msg = "Insufficient memory exists to initialize the mutex.";
+	else if (status == EPERM && op == M_INIT)
+		msg = "The caller does not have the privilege to perform the operation.";
+	else if (op == M_DESTROY)
+		msg = "Unable to destroy mutex.";
+	else if (op == M_LOCK)
+		msg = "Unable to lock mutex.";
+	else if (op == M_UNLOCK)
+		msg = "Unable to unlock mutex.";
+	else
+	 	msg = "Something went wrong in the mutex handlers.";
+	return (error_msg(msg));
+}
 
 int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op)
 {
@@ -28,9 +50,7 @@ int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op)
 		status = pthread_mutex_destroy(mutex);
 	else
 		return (error_msg("Wrong operation code used for mutex."));
-
 	if (status != 0)
-		return (handle_mutex_error(status, op));
-
+		return (mutex_error_handle(status, op));
 	return (status);
 }
