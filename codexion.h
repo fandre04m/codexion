@@ -6,7 +6,7 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/15 19:25:06 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/10/26 19:30:54 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/10/27 15:10:08 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@
 typedef pthread_mutex_t	t_mtx;
 typedef struct s_sim	t_sim;
 
-/*--------- Enum ----------*/
+/*--------- Enums ---------*/
 
 typedef enum e_mutex_op
 {

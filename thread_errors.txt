@@ -1,0 +1,26 @@
+mutex_init:
+	Args: pthread_mutex_t(t_mtx) and attr(NULL)
+	
+	EAGAIN The system lacked the necessary resources (other than memory) to initialize another mutex.
+	ENOMEM Insufficient memory exists to initialize the mutex.
+	EPERM  The caller does not have the privilege to perform the operation.
+
+
+mutex_destroy:
+	args: pthread_mutex_t(t_mtx)
+	
+	All errors are associated with init. Still check for result != 0.
+
+
+mutex_lock:
+	Args: pthread_mutex_t(t_mtx)
+
+	Errors are generally associated with mutex types we are not using.
+	Just write a general error for result != 0.
+
+mutex_unlock:
+	Args: pthread_mutex_t(t_mtx)
+	
+	All errors are associated with lock. Still check for result != 0.
+
+
