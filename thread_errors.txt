@@ -5,12 +5,10 @@ mutex_init:
 	ENOMEM Insufficient memory exists to initialize the mutex.
 	EPERM  The caller does not have the privilege to perform the operation.
 
-
 mutex_destroy:
 	args: pthread_mutex_t(t_mtx)
 	
 	All errors are associated with init. Still check for result != 0.
-
 
 mutex_lock:
 	Args: pthread_mutex_t(t_mtx)
@@ -24,3 +22,35 @@ mutex_unlock:
 	All errors are associated with lock. Still check for result != 0.
 
 
+cond_init:
+	Args: pthread_cond_t(t_cond) and attr(NULL)
+
+	EAGAIN System lacked the necessary resources (other than memory) to initialize another condition variable.
+	ENOMEM Insufficient memory exists to initialize the condition variable.
+
+cond_destroy:
+	Args: pthread_cond_t(t_cond)
+	
+	All errors are associated with init. Still check for result != 0.
+
+cond_wait:
+	Args: pthread_cond_t(t_cond) and pthread_mutex_t(t_mtx)
+	
+	ENOTRECOVERABLE The state protected by the mutex is not recoverable.
+	
+cond_timedwait:
+	Args: pthread_cond_t(t_cond), pthread_mutex_t(t_mtx) and const struct timespec abstime.
+	
+	ENOTRECOVERABLE The state protected by the mutex is not recoverable.
+	ETIMEDOUT The time specified by abstime to pthread_cond_timedwait() has passed.
+	EINVAL The  abstime  argument  specified  a nanosecond value less than zero or greater than or equal to 1000 million.
+
+cond_signal:
+	Args: pthread_cond_t(t_cond)
+
+	No errors associated with it. Still check for result != 0.
+
+cond_broadcast:
+	Args: pthread_cond_t(t_cond)
+	
+	No error associated with it. Still check for result != 0.

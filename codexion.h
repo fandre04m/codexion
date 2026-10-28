@@ -6,7 +6,7 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/15 19:25:06 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/10/27 16:23:31 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/10/28 20:36:50 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,7 @@
 
 // type definitons for convenience.
 typedef pthread_mutex_t	t_mtx;
+typedef pthread_cond_t	t_cond;
 typedef struct s_sim	t_sim;
 
 /*--------- Enums ---------*/
@@ -102,7 +103,7 @@ int	parse_input(t_sim *sim, char **av);
 /*--------- Init ----------*/
 int	init_data(t_sim *sim);
 
-/*-------- Mutex ----------*/
+/*------- Handlers --------*/
 int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op);
 
 #endif
