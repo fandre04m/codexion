@@ -6,11 +6,16 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/28 17:27:42 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/10/28 21:35:49 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/10/29 01:47:01 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
+
+static int	cond_error_handle(int status, t_cond_op op)
+{
+	return (status);
+}
 
 int	safe_cond_handle(t_cond *cond, t_cond_op op)
 {
@@ -48,5 +53,7 @@ int	safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
 	int	status;
 
 	status = pthread_cond_timedwait(cond, mutex, deadline);
+	if (status != 0)
+		return (cond_error_handle(status, C_TIMEDWAIT));
 	return (status);
 }
