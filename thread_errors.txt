@@ -54,3 +54,15 @@ cond_broadcast:
 	Args: pthread_cond_t(t_cond)
 	
 	No error associated with it. Still check for result != 0.
+	
+
+pthread_create:
+	Args: pthread_t *thread, attr(NULL), void *(star_routine) (void *) and void *arg
+	
+	EAGAIN Insufficient resources to create another thread.
+	
+pthread_join:
+	Args: pthread_t *thread and void **retval(NULL)
+	
+	EDEADLK A deadlock was detected. Two threads tried to join with each other or thread specifies the calling thread.
+	EINVAL Specified thread is not a joinable thread or nother thread is already waiting to join with this thread.

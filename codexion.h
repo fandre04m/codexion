@@ -39,6 +39,12 @@ typedef struct s_sim	t_sim;
 
 /*--------- Enums ---------*/
 
+typedef enum e_thread_op
+{
+	T_CREATE,
+	T_JOIN
+}	t_thread_op;
+
 typedef enum e_mutex_op
 {
 	M_INIT,
