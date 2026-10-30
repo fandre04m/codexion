@@ -25,13 +25,11 @@ static int	cond_error_handle(int status, t_cond_op op)
 		msg = "The state protected by the mutex is not recoverable.";
 	else if (status == ENOTRECOVERABLE && op == C_TIMEDWAIT)
 		msg = "The state protected by the mutex is not recoverable.";
-	else if (status == ETIMEDOUT && op == C_TIMEDWAIT)
-		msg = "The time specified by abstime to cond_timedwait has passed.";
 	else if (status == EINVAL && op == C_TIMEDWAIT)
 		msg = "The abstime argument specified a nanoseconds "
 			"value < 0 or >= 1000 million.";
 	else if (op == C_DESTROY)
-		msg = "Unable do destroy condition variable.";
+		msg = "Unable to destroy condition variable.";
 	else if (op == C_SIGNAL)
 		msg = "cond_signal failed.";
 	else if (op == C_BROADCAST)
@@ -78,6 +76,8 @@ int	safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
 	int	status;
 
 	status = pthread_cond_timedwait(cond, mutex, deadline);
+	if (status == ETIMEDOUT)
+		return (status);
 	if (status != 0)
 		return (cond_error_handle(status, C_TIMEDWAIT));
 	return (status);
