@@ -12,6 +12,25 @@
 
 #include "codexion.h"
 
+static int	thread_error_handle(int status, t_thread_op op)
+{
+	const char	*msg;
+
+	if (status == EAGAIN && op == T_CREATE)
+		msg = "Insufficient resources to create another thread.";
+	else if (status == EDEADLK && op == T_JOIN)
+		msg = "A deadlock was detected or the thread ID passed to "
+			"pthread_join specifies the calling thread.";
+	else if (status == EINVAL && op == T_JOIN)
+		msg = "Specified thread is not joinable or another "
+			"thread is already waiting to join with this thread.";
+	else if (status == ESRCH && op == T_JOIN)
+		msg = "No thread with the supplied ID could be found.";
+	else
+		msg = "Something went wrong with the pthread handler.";
+	return (error_msg(msg));
+}
+
 int	safe_pthread_create(pthread_t *thread, void *(*loop)(void *), void *coder)
 {
 	int	status;
