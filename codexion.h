@@ -105,5 +105,9 @@ int	init_data(t_sim *sim);
 
 /*------- Handlers --------*/
 int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op);
+int	safe_cond_handle(t_cond *cond, t_cond_op op);
+int	safe_cond_wait(t_cond *cond, t_mtx *mutex);
+int	safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
+		const struct timespec *deadline);
 
 #endif

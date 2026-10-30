@@ -14,7 +14,31 @@
 
 static int	cond_error_handle(int status, t_cond_op op)
 {
-	return (status);
+	const char	*msg;
+
+	if (status == EAGAIN && op == C_INIT)
+		msg = "System lacked the necessary resources (other than memory) "
+			"to initialize another condition variable.";
+	else if (status == ENOMEM && op == C_INIT)
+		msg = "Insufficient memory to initialize the condition variable.";
+	else if (status == ENOTRECOVERABLE && op == C_WAIT)
+		msg = "The state protected by the mutex is not recoverable.";
+	else if (status == ENOTRECOVERABLE && op == C_TIMEDWAIT)
+		msg = "The state protected by the mutex is not recoverable.";
+	else if (status == ETIMEDOUT && op == C_TIMEDWAIT)
+		msg = "The time specified by abstime to cond_timedwait has passed.";
+	else if (status == EINVAL && op == C_TIMEDWAIT)
+		msg = "The abstime argument specified a nanoseconds "
+			"value < 0 or >= 1000 million.";
+	else if (op == C_DESTROY)
+		msg = "Unable do destroy condition variable.";
+	else if (op == C_SIGNAL)
+		msg = "cond_signal failed.";
+	else if (op == C_BROADCAST)
+		msg = "cond_broadcast failed.";
+	else
+		msg = "Something went wrong with the pthread condition handler.";
+	return (error_msg(msg));
 }
 
 int	safe_cond_handle(t_cond *cond, t_cond_op op)
@@ -30,8 +54,9 @@ int	safe_cond_handle(t_cond *cond, t_cond_op op)
 	else if (op == C_BROADCAST)
 		status = pthread_cond_broadcast(cond);
 	else
-		return (error_msg("Operation code incompatible with condition funvtions.\n"
-					G "Valid codes: C_INIT, C_DESTROY, C_SIGNAL, C_BROADCAST." RST));
+		return (error_msg("Operation code incompatible with condition "
+				"variable functions.\n"
+				G "Valid codes: C_INIT C_DESTROY C_SIGNAL C_BROADCAST." RST));
 	if (status != 0)
 		return (cond_error_handle(status, op));
 	return (status);

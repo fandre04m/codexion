@@ -22,7 +22,7 @@ static int	mutex_error_handle(int status, t_mutex_op op)
 	else if (status == ENOMEM && op == M_INIT)
 		msg = "Insufficient memory exists to initialize the mutex.";
 	else if (status == EPERM && op == M_INIT)
-		msg = "The caller does not have the privilege to perform the operation.";
+		msg = "Caller does not have the privilege to perform the operation.";
 	else if (op == M_DESTROY)
 		msg = "Unable to destroy mutex.";
 	else if (op == M_LOCK)
@@ -30,7 +30,7 @@ static int	mutex_error_handle(int status, t_mutex_op op)
 	else if (op == M_UNLOCK)
 		msg = "Unable to unlock mutex.";
 	else
-	 	msg = "Something went wrong in the mutex handlers.";
+		msg = "Something went wrong in the mutex handlers.";
 	return (error_msg(msg));
 }
 
@@ -48,7 +48,7 @@ int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op)
 		status = pthread_mutex_destroy(mutex);
 	else
 		return (error_msg("Operation code incompatible with mutex functions.\n"
-					G "Valid codes: M_INIT, M_LOCK, M_UNLOCK, M_DESTROY." RST));
+				G "Valid codes: M_INIT M_LOCK M_UNLOCK M_DESTROY." RST));
 	if (status != 0)
 		return (mutex_error_handle(status, op));
 	return (status);
