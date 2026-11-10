@@ -42,7 +42,25 @@ The rule is not “lock everything.” Identify shared data and give it a clear 
 | --- | --- | --- |
 | dongle.in_use | Hold the dongle mutex while reading/changing it | Understood; not coded |
 | dongle.ready_at | Hold the dongle mutex while reading/changing it | Understood; not coded |
-| Stop state | Choose and document a dedicated protection rule | Not yet designed |
+| Stop state (`end_sim`, reason) | Hold the simulation-state mutex | Understood; not coded |
+| Coder deadline / completed-compiles / finished flag | Hold the simulation-state mutex | Understood; not coded |
+| Number of finished coders | Hold the simulation-state mutex | Understood; not coded |
+| Scheduler heap, requests, grants, any reservations | Hold the simulation-state mutex | Understood; not coded |
+| One complete output line | Hold the output mutex | Understood; not coded |
+
+Parsed configuration (`time_compile`, scheduler choice, and similar values)
+is written before threads exist and never changes, so it needs no mutex.
+
+The scheduler mutex and dongle mutexes have different jobs:
+
+    state/scheduler mutex -> decides who is entitled to a pair
+    dongle mutex           -> protects the physical state of one dongle
+
+For a pair assignment, the scheduler takes the state mutex first, then locks
+the two required dongles in ascending ID order. It checks entitlement,
+priority, cooldown, and physical availability, then updates both dongles
+before releasing either decision. No code may acquire these locks in the
+opposite direction (dongle first, then state), because that could deadlock.
 
 ## 2. Mutexes
 
@@ -104,6 +122,35 @@ pthread_cond_signal wakes one waiter. pthread_cond_broadcast wakes all waiters o
 
 pthread_cond_timedwait adds an absolute deadline. It returns after a signal/broadcast or when the deadline is reached (ETIMEDOUT), and has re-locked the mutex before returning.
 
+### Timed waits and the two clock scales
+
+The simulation uses `CLOCK_MONOTONIC` for its own deadlines, cooldowns, and
+elapsed log times. A default `pthread_cond_timedwait`, however, interprets its
+absolute `struct timespec` deadline with `CLOCK_REALTIME`. The timestamps are
+therefore not interchangeable.
+
+To wait until a monotonic target, first calculate a duration using the
+simulation clock, then add only that duration to a fresh real-time reading:
+
+    remaining = monotonic_target - monotonic_now
+    wait_deadline = realtime_now + remaining
+
+For example, if a cooldown ends at monotonic 3100 ms and monotonic time is
+2500 ms, the remaining wait is 600 ms. Read `CLOCK_REALTIME` and add those
+600 ms to produce the absolute deadline passed to `pthread_cond_timedwait`.
+When the wait returns—after a broadcast, timeout, or spurious wake-up—the
+thread checks the real condition again using monotonic time.
+
+Never pass a `CLOCK_MONOTONIC` timestamp directly to a default timed wait: it
+would be interpreted as a real-time calendar timestamp and can time out at the
+wrong moment.
+
+A correction to our earlier discussion: if the system clock changes while a
+default timed wait is blocked, the wait can still end too early or too late.
+Rechecking monotonic time handles an early return but cannot wake a wait delayed
+by a backward clock adjustment. We must revisit this limitation when designing
+timed waits within the subject's allowed functions.
+
 ## 4. Time, burnout, and deadlines
 
 The subject measures burnout from compile start to next compile start:
@@ -161,7 +208,12 @@ The subject requires FIFO/EDF when multiple coders request the same dongle.
 
 Suppose coder 2 has priority for dongles 2 and 3. Dongle 2 is free, dongle 3 is unavailable, and coder 1 also wants dongle 2. Coder 1 must not borrow dongle 2 ahead of coder 2 merely because it might return it before dongle 3 is ready. That would make priority depend on luck and could delay the higher-priority coder until burnout.
 
-The scheduler can mark dongle 2 as reserved for coder 2. Reserved is different from in_use: no worker physically holds it. Once dongle 3 is ready, coder 2 receives both. Coder 1 may still compile with a pair that does not need dongle 2.
+The scheduler could explicitly mark dongle 2 as reserved for coder 2, or derive
+coder 2's priority from pending requests without storing a reservation. Both
+approaches remain open until the heap design. Either way, a worker does not
+physically hold a dongle while waiting for its partner, and an unrelated pair
+can still be granted. The exact fairness interpretation needs testing against
+the subject.
 
 This can leave a dongle briefly idle. It is an acceptable tradeoff because predictable per-dongle fairness is a stated requirement.
 
@@ -171,17 +223,17 @@ This can leave a dongle briefly idle. It is an acceptable tradeoff because predi
 same nanosecond. It means no other scheduler operation can observe or create a
 half-finished assignment.
 
-    wrong:  mark/reserve dongle 2 for coder 2
+    wrong:  assign dongle 2 to coder 2
             another scheduler action runs
-            mark/reserve dongle 3 for coder 2
+            assign dongle 3 to coder 2
 
     right:  while the scheduler mutex is held:
                 check priority, readiness, and pair state
-                reserve or assign the pair state together
+                assign the pair state together
             release the scheduler mutex
 
-No worker physically holds one dongle while waiting for its partner. A
-reservation is scheduler bookkeeping only.
+No worker physically holds one dongle while waiting for its partner. If used,
+a reservation is scheduler bookkeeping only.
 
 ### FIFO, EDF, and the heap
 
@@ -202,9 +254,9 @@ request just because its other dongle happens to be ready first.
 
 The subject requires a custom priority queue implemented as a binary heap. A heap is an array with a special ordering rule: the current best request sits at index 0.
 
-## Future topics
+## Discussed concepts awaiting implementation
 
-### Cooldown
+### 6. Cooldown
 
     ready_at = release_time + dongle_cooldown
 
@@ -218,10 +270,7 @@ Treat the related values as independent:
 | --- | --- |
 | in_use | A worker physically has the dongle. |
 | ready_at | The earliest time cooldown permits assignment. |
-| reserved_for | The scheduler has promised it to its rightful next coder. |
-
-For example, a dongle can be not in use, reserved for coder 2, and still
-cooling down. The reservation does not cancel cooldown.
+An explicit reservation, if chosen later, would not cancel cooldown.
 
 On release, protected code clears `in_use`, calculates `ready_at`, then notifies
 the scheduler. The notification does not bypass cooldown. A timed wait can
@@ -231,13 +280,39 @@ or stop event.
 Later tests will infer release time from compile end and check that no following
 acquisition occurs before compile_start + time_to_compile + cooldown.
 
-### Serialized logging
+### 7. Serialized logging
 
 Multiple threads can mix output characters. One output mutex will make every state message a complete, unmixed line.
 
-### Stopping and cleanup
+### 8. Stopping and cleanup
 
-One burnout or universal completion stops the simulation. A protected stop state plus broadcast wakes waiters. The main thread joins threads, destroys initialized mutexes/conditions, and frees allocations.
+One burnout or universal completion stops the simulation. The shared state has:
+
+    end_sim
+    stop_reason = burnout | all_complete
+
+The simulation-state mutex protects both values. The first valid thread to set
+`end_sim` wins; later threads see it is already true and leave the original
+reason unchanged.
+
+The monitor is the only thread that may announce burnout. While holding the
+state mutex, it confirms that a coder's current deadline has passed, sets the
+stop state, prints the one required `burned out` line through the output
+serializer, and broadcasts the state-change condition. Normal logging checks
+the same stop state before printing, so no normal state line can follow that
+burnout line.
+
+Normal completion is counted after a compile phase finishes. Each coder has a
+protected completed-compile count and `finished` flag. When a worker reaches
+the requirement for the first time, it marks itself finished and increments
+the protected `finished_coders` count exactly once. The worker that changes
+that count to `n_coders` sets `end_sim` with the `all_complete` reason and
+broadcasts. A finished coder no longer requests dongles.
+
+After a stop broadcast, a coder waiting for a pair or in an interruptible
+phase wait wakes, checks `end_sim`, releases any assigned pair safely, and
+exits. The main thread joins every created worker and the monitor before it
+destroys mutexes/conditions or frees allocations.
 
 ## Implementation journal
 

@@ -54,10 +54,13 @@ explanation makes sense.
 - [x] **Why shared state needs protection.** We understand that two threads
   reading/changing the same shared value without coordination can race and
   produce unreliable behaviour.
-- [ ] **Map shared state to protection.** Identify each value accessed by more
-  than one thread (for example, whether a dongle is free, the stop flag, and a
-  coder's last compile start), then write which mutex protects it. This is an
-  applied exercise; it does not need to be memorized in advance.
+- [x] **Map shared state to protection.** Final map: the state/scheduler mutex
+  protects stop state, coder deadlines/completion state, the finished-coder
+  count, scheduler heap/requests/grants, and any reservations. Each dongle mutex
+  protects its own `in_use` and `ready_at` physical state. Parsed settings are
+  immutable after startup and need no mutex. Scheduler actions lock state
+  first, then their dongles in ascending ID order; no code takes those locks
+  in reverse order.
 - [x] **Mutexes.** Confirmed the basic rule: lock before examining or changing
   the data it protects; unlock immediately after the related decision is
   complete. A mutex is a key to a tiny shared notebook, not a general-purpose
@@ -70,46 +73,52 @@ explanation makes sense.
   clock using `clock_gettime(CLOCK_MONOTONIC, ...)`. `last_compile_start` is
   recorded when both dongles are exclusively assigned, immediately before
   `is compiling`; its deadline is that time plus `time_to_burnout`. The monitor
-  compares this deadline with the clock.
+  compares this deadline with the clock. For a default `pthread_cond_timedwait`,
+  calculate remaining time with the monotonic clock, then add that duration to
+  a fresh `CLOCK_REALTIME` value to form its required absolute deadline; never
+  pass a monotonic timestamp directly to that wait.
 - [x] **Atomic pair assignment.** Understood: a scheduler-protected decision
   grants access only when both required dongles are available. A priority
-  reservation may wait for its partner, but no worker physically holds only one
+  higher-priority request may wait for its partner, but no worker physically holds only one
   dongle; no other scheduler action can interleave with the pair decision.
 - [x] **Cooldown.** Understood: releasing a dongle sets
   `ready_at = release_time + dongle_cooldown`; it cannot be assigned before
-  that time even when `in_use` is false. A reservation may wait through the
+  that time even when `in_use` is false. A request may wait through the
   cooldown, and timed waiting can avoid busy polling.
 - [x] **Fairness policies.** Understood the priority keys: FIFO uses request
   arrival sequence; EDF uses earlier burnout deadline. Equal EDF deadlines use
   arrival sequence, then coder ID, so runs stay deterministic.
-- [x] **Partially available pairs.** Agreed interpretation: a higher-priority
-  request reserves an available contested dongle while it awaits its other
-  dongle; a lower-priority request may not borrow it. Add a focused test when
-  the scheduler is implemented.
-- [ ] **Stopping.** Define one mutex-protected stop flag and a reason
-  (`burnout` or `all_complete`). When it changes, every blocked coder must be
-  woken so it can exit instead of sleeping forever.
+- [x] **Partially available pairs.** Working fairness interpretation: a lower
+  priority request cannot bypass a higher-priority request on a shared dongle,
+  while unrelated pairs can proceed. Choose between explicit reservations and
+  deriving entitlement from pending requests when designing the heap; test both
+  contention and unrelated progress against the subject's wording.
+- [x] **Stopping.** Agreed protocol: one protected stop state has a reason
+  (`burnout` or `all_complete`), and the first valid stop decision wins. The
+  monitor alone announces burnout; the worker that changes the protected
+  finished-coder count to `n_coders` requests normal completion. A broadcast
+  wakes every blocked worker, which releases any assigned pair safely and
+  exits. Normal logs check this state, so none can follow a burnout line.
 
-**Foundation-code checkpoint:** once the two remaining design boxes are
-complete, implement and test the smallest reusable pieces that follow directly
-from them: the monotonic millisecond-time helper and the agreed state/locking
-interface in the header. This is deliberately not worker, monitor, heap, or
-resource-grant code; those remain in later phases where their full prerequisites
-are initialized and testable.
+**Foundation-code checkpoint:** the Phase 1 design boxes are complete. Before
+coding, discuss any remaining questions; then implement and test the smallest
+reusable pieces that follow directly from them: the monotonic millisecond-time
+helper and the agreed state/locking interface in the header. This is
+deliberately not worker, monitor, heap, or resource-grant code; those remain
+in later phases where their full prerequisites are initialized and testable.
 
 - [ ] Implement and test the monotonic millisecond-time helper, including
   elapsed time from one supplied start timestamp.
 - [ ] Encode the agreed shared-state fields and lock-ownership interface in the
   header without starting threads or scheduling dongles.
 
-**Starting design to evaluate together (not a final choice):** coders can submit
-a request for their *pair* of dongles to one scheduler queue. A coordinator
-mutex plus condition variable protects queue order, availability/cooldown
-decisions, and stop state. A coder is granted both dongles in one decision,
-which removes the classic "hold one, wait for one" deadlock. Each dongle still
-has its required own mutex when its physical state (`in_use` and `ready_at`) is
-changed. Before accepting this approach, we will test it against the subject's
-per-dongle FIFO/EDF wording and change it if necessary.
+**Finalized locking approach:** coders submit pair requests to one scheduler
+queue. The state/scheduler mutex protects queue order, any reservations, grants,
+coder state, and stop state; its condition variable wakes threads after a
+meaningful state change. A scheduler action takes that mutex, then locks the
+needed dongles in ascending ID order before inspecting/changing their physical
+state (`in_use`, `ready_at`). It grants a pair in one decision, so a worker
+never physically holds only one dongle while waiting for the other.
 
 **Exit checkpoint:** you can describe, in your own words, (1) what a mutex and
 a condition variable do here, (2) why one-at-a-time acquisition can deadlock,
@@ -154,10 +163,11 @@ non-interleaved state lines with timestamps measured from one shared start.
   priority queue.
 - [ ] Assign a strictly increasing request sequence while holding the scheduler
   lock; calculate the EDF deadline from protected coder state.
-- [ ] Dispatch only a request whose required dongles are both available and
-  past `ready_at`; reserve both atomically, then wake its coder.
+- [ ] Dispatch only an entitled request whose required dongles are both available
+  and past `ready_at`; grant both atomically, then wake its coder. Allow
+  unrelated eligible pairs to proceed even when a higher-priority pair waits.
 - [ ] On release, set each dongle's `ready_at` to release time plus cooldown,
-  clear its reservation, notify waiters, and ensure it cannot be granted early.
+  update any scheduler bookkeeping, notify waiters, and prevent early grants.
 - [ ] Ensure two `has taken a dongle` lines precede every `is compiling` line.
 - [ ] Specify the one-coder path: it can take the sole dongle but cannot obtain
   a second one, so the monitor must report burnout without a deadlock.
