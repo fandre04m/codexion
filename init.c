@@ -6,12 +6,11 @@
 /*   By: fandre-m <fandre-m@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/23 20:19:43 by fandre-m          #+#    #+#             */
-/*   Updated: 2026/09/23 20:19:43 by fandre-m         ###   ########.fr       */
+/*   Updated: 2026/11/11 18:55:55 by fandre-m         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include <stdlib.h>
 
 int	init_data(t_sim *sim)
 {
