@@ -12,7 +12,6 @@
 
 #include "codexion.h"
 #include <limits.h>
-#include <string.h>
 
 static inline bool	ft_isdigit(int c)
 {

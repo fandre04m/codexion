@@ -212,6 +212,10 @@ If dongle A is ready at 20 ms and B at 50 ms, compiling cannot begin before 50 m
 ### Priority still comes first
 
 The subject requires FIFO/EDF when multiple coders request the same dongle.
+Whether to use one central heap or per-dongle heaps remains open; compare how
+each handles unrelated requests, blocked requests, and EDF liveness after
+checking the evaluation sheet. The subject does not explicitly specify the
+number of heaps.
 
 Suppose coder 2 has priority for dongles 2 and 3. Dongle 2 is free, dongle 3 is unavailable, and coder 1 also wants dongle 2. Coder 1 must not borrow dongle 2 ahead of coder 2 merely because it might return it before dongle 3 is ready. That would make priority depend on luck and could delay the higher-priority coder until burnout.
 

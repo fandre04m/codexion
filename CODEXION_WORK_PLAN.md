@@ -115,18 +115,17 @@ in later phases where their full prerequisites are initialized and testable.
   monitor-specific fields remain for their later design checkpoints. These
   declarations do not yet initialize or enforce the locking protocol.
 
-**Finalized locking approach:** coders submit pair requests to one scheduler
-queue. The state/scheduler mutex protects queue order, any reservations, grants,
-coder state, and stop state; its condition variable wakes threads after a
-meaningful state change. A scheduler action takes that mutex, then locks the
-needed dongles in ascending ID order before inspecting/changing their physical
-state (`in_use`, `ready_at`). It grants a pair in one decision, so a worker
-never physically holds only one dongle while waiting for the other.
+**Working locking approach:** the state/scheduler mutex protects scheduling
+decisions, coder state, and stop state; its condition variable wakes waiters.
+Pair grants use that mutex, then the needed dongle mutexes in ascending ID
+order. The central heap versus per-dongle heaps and the treatment of blocked
+requests remain open; compare fairness, unrelated progress, and EDF liveness
+against the subject and evaluation sheet before implementation.
 
-**Exit checkpoint:** you can describe, in your own words, (1) what a mutex and
+**Exit checkpoint — complete:** you can describe, in your own words, (1) what a mutex and
 a condition variable do here, (2) why one-at-a-time acquisition can deadlock,
 (3) how FIFO differs from EDF, and (4) how the monitor can safely stop every
-thread. The plan records the agreed invariants before any struct/code change.
+thread. The plan records the working invariants and remaining scheduler questions.
 
 ### 2. Build safe initialization and teardown
 
