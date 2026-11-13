@@ -27,20 +27,20 @@ static int	ft_atoi(const char *nptr, int *value)
 	while (*nptr == ' ' || (*nptr >= 9 && *nptr <= 13))
 		nptr++;
 	if (*nptr == '-')
-		return (error_msg("All numeric arguments need to be positive."));
+		return (error_msg("All numeric arguments need to be positive.", 1));
 	if (*nptr == '+')
 		nptr++;
 	if (!ft_isdigit(*nptr))
-		return (error_msg("Invalid numeric argument detected."));
+		return (error_msg("Invalid numeric argument detected.", 1));
 	while (ft_isdigit(*nptr))
 	{
 		if (sum > (INT_MAX - (*nptr - '0')) / 10)
-			return (error_msg("An argument exceeds INT_MAX."));
+			return (error_msg("An argument exceeds INT_MAX.", 1));
 		sum = (sum * 10) + (*nptr - '0');
 		nptr++;
 	}
 	if (*nptr != '\0')
-		return (error_msg("Invalid numeric argument detected."));
+		return (error_msg("Invalid numeric argument detected.", 1));
 	*value = sum;
 	return (0);
 }
@@ -48,7 +48,7 @@ static int	ft_atoi(const char *nptr, int *value)
 static int	validate_scheduler(char *str)
 {
 	if (strcmp(str, "fifo") != 0 && strcmp(str, "edf") != 0)
-		return (error_msg("Scheduler must be 'fifo' or 'edf'."));
+		return (error_msg("Scheduler must be 'fifo' or 'edf'.", 1));
 	return (0);
 }
 
@@ -71,7 +71,7 @@ int	parse_input(t_sim *sim, char **av)
 			return (1);
 	}
 	if (sim->n_coders == 0)
-		return (error_msg("At least one coder is required."));
+		return (error_msg("At least one coder is required.", 1));
 	if (validate_scheduler(av[8]))
 		return (1);
 	sim->scheduler = av[8];

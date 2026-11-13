@@ -18,13 +18,13 @@ long long	current_time_ms(void)
 	long long		now;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &curr_time))
-		return (error_msg("Clock failed to get current time."));
-	now = (curr_time.tv_sec * 1000) + (curr_time.tv_nsec / 1000000);
+		return (error_msg("Clock failed to get current time.", -1));
+	now = (long long)curr_time.tv_sec * 1000 + (curr_time.tv_nsec / 1000000);
 	return (now);
 }
 
-int	error_msg(const char *msg)
+int	error_msg(const char *msg, int error_value)
 {
 	fprintf(stderr, R "Error: %s\n" RST, msg);
-	return (1);
+	return (error_value);
 }

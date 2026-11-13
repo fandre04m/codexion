@@ -28,7 +28,7 @@ static int	thread_error_handle(int status, t_thread_op op)
 		msg = "No thread with the supplied ID could be found.";
 	else
 		msg = "Something went wrong with the pthread handler.";
-	return (error_msg(msg));
+	return (error_msg(msg, 1));
 }
 
 int	safe_pthread_create(pthread_t *thread, void *(*loop)(void *), void *coder)

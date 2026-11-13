@@ -36,7 +36,7 @@ static int	cond_error_handle(int status, t_cond_op op)
 		msg = "cond_broadcast failed.";
 	else
 		msg = "Something went wrong with the pthread condition handler.";
-	return (error_msg(msg));
+	return (error_msg(msg, 1));
 }
 
 int	safe_cond_handle(t_cond *cond, t_cond_op op)
@@ -54,7 +54,8 @@ int	safe_cond_handle(t_cond *cond, t_cond_op op)
 	else
 		return (error_msg("Operation code incompatible with condition "
 				"variable functions.\n"
-				G "Valid codes: C_INIT C_DESTROY C_SIGNAL C_BROADCAST." RST));
+				G "Valid codes: C_INIT C_DESTROY C_SIGNAL C_BROADCAST."
+				RST, 1));
 	if (status != 0)
 		return (cond_error_handle(status, op));
 	return (status);

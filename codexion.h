@@ -102,22 +102,23 @@ struct s_sim
 };
 
 /*--------- Utils ---------*/
-int	error_msg(const char *error);
+int			error_msg(const char *error, int error_value);
 long long	current_time_ms(void);
 
 /*-------- Parsing --------*/
-int	parse_input(t_sim *sim, char **av);
+int			parse_input(t_sim *sim, char **av);
 
 /*--------- Init ----------*/
-int	init_data(t_sim *sim);
+int			init_data(t_sim *sim);
 
 /*------- Handlers --------*/
-int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op);
-int	safe_cond_handle(t_cond *cond, t_cond_op op);
-int	safe_cond_wait(t_cond *cond, t_mtx *mutex);
-int	safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
-		const struct timespec *deadline);
-int	safe_pthread_create(pthread_t *thread, void *(*loop)(void *), void *coder);
-int	safe_pthread_join(pthread_t *thread);
+int			safe_mutex_handle(t_mtx *mutex, t_mutex_op op);
+int			safe_cond_handle(t_cond *cond, t_cond_op op);
+int			safe_cond_wait(t_cond *cond, t_mtx *mutex);
+int			safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
+				const struct timespec *deadline);
+int			safe_pthread_create(pthread_t *thread,
+				void *(*loop)(void *), void *coder);
+int			safe_pthread_join(pthread_t *thread);
 
 #endif

@@ -31,7 +31,7 @@ static int	mutex_error_handle(int status, t_mutex_op op)
 		msg = "Unable to unlock mutex.";
 	else
 		msg = "Something went wrong in the mutex handlers.";
-	return (error_msg(msg));
+	return (error_msg(msg, 1));
 }
 
 int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op)
@@ -48,7 +48,7 @@ int	safe_mutex_handle(t_mtx *mutex, t_mutex_op op)
 		status = pthread_mutex_destroy(mutex);
 	else
 		return (error_msg("Operation code incompatible with mutex functions.\n"
-				G "Valid codes: M_INIT M_LOCK M_UNLOCK M_DESTROY." RST));
+				G "Valid codes: M_INIT M_LOCK M_UNLOCK M_DESTROY." RST, 1));
 	if (status != 0)
 		return (mutex_error_handle(status, op));
 	return (status);

@@ -39,7 +39,7 @@ int	main(int ac, char **av)
 	else
 	{
 		return (error_msg("Wrong number of arguments.\n"
-				G"Correct example: '5 800 100 100 100 5 50 fifo'"RST));
+				G"Correct example: '5 800 100 100 100 5 50 fifo'"RST, 1));
 	}
 	return (0);
 }
