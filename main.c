@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "codexion.h"
+#include <limits.h>
 
 /*
  * Required imput format:
@@ -21,7 +22,7 @@
 
 int	main(int ac, char **av)
 {
-	t_sim	simulation;
+	t_sim		simulation;
 
 	if (ac == 9)
 	{

@@ -11,13 +11,16 @@
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include <time.h>
 
-long long	get_time_ms(void)
+long long	current_time_ms(void)
 {
-	struct timespec	now;
+	struct timespec	curr_time;
+	long long		now;
 
-	
+	if (clock_gettime(CLOCK_MONOTONIC, &curr_time))
+		return (error_msg("Clock failed to get current time."));
+	now = (curr_time.tv_sec * 1000) + (curr_time.tv_nsec / 1000000);
+	return (now);
 }
 
 int	error_msg(const char *msg)

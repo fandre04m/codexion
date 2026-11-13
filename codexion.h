@@ -20,6 +20,7 @@
 # include <string.h>
 # include <unistd.h>
 # include <errno.h>
+# include <time.h>
 
 /*
  *  ASNI Escape sequence for bold colored text.
@@ -102,6 +103,7 @@ struct s_sim
 
 /*--------- Utils ---------*/
 int	error_msg(const char *error);
+long long	current_time_ms(void);
 
 /*-------- Parsing --------*/
 int	parse_input(t_sim *sim, char **av);
