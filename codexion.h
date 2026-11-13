@@ -75,10 +75,10 @@ typedef enum e_stop_reason
 /*-------- Structs --------*/
 typedef struct s_dongle
 {
-	t_mtx	dongle;
-	int		dongle_id;
-	bool	in_use;
-	long	ready_at;
+	t_mtx		dongle_mtx;
+	int			dongle_id;
+	bool		in_use;
+	long long	ready_at;
 }	t_dongle;
 
 typedef struct s_coder
@@ -86,7 +86,7 @@ typedef struct s_coder
 	int			coder_id;
 	int			n_compiles;
 	bool		finished;
-	int			last_comp_time;
+	long long	last_comp_start;
 	t_dongle	*left_dongle;
 	t_dongle	*right_dongle;
 	pthread_t	thread_id;

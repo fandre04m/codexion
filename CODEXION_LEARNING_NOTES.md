@@ -58,6 +58,11 @@ The scheduler mutex and dongle mutexes have different jobs:
     state/scheduler mutex -> decides who is entitled to a pair
     dongle mutex           -> protects the physical state of one dongle
 
+In the current header, these are named `sim_mtx` and `dongle_mtx`;
+`output_mtx` is for serialized output and `state_changed` is the shared
+condition variable. They have been declared, but initialization and actual
+locking/waking behaviour are still to be implemented and tested.
+
 For a pair assignment, the scheduler takes the state mutex first, then locks
 the two required dongles in ascending ID order. It checks entitlement,
 priority, cooldown, and physical availability, then updates both dongles
@@ -325,6 +330,7 @@ Update this only after an item exists and has been tested.
 | Argument parser | Eight arguments, numeric validation, FIFO/EDF validation | Built; valid/invalid examples checked |
 | Initial allocation | Coder/dongle arrays allocated | Partial: normal cleanup missing |
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
+| Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; synchronization behaviour not yet implemented |
 | Initialization/cleanup | Not implemented | Not started |
 | Logging | Not implemented | Not started |
 | Heap scheduler | Not implemented | Not started |

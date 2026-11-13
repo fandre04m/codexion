@@ -110,8 +110,10 @@ in later phases where their full prerequisites are initialized and testable.
 - [x] Implement and test the monotonic millisecond-time helper, including
   elapsed time from a saved start timestamp. The user tested elapsed time;
   clock-read failure returns `-1` but has not been deliberately injected.
-- [ ] Encode the agreed shared-state fields and lock-ownership interface in the
-  header without starting threads or scheduling dongles.
+- [x] Declare the currently agreed shared-state and synchronization fields in
+  the header; document lock ownership in the learning notes. Scheduler and
+  monitor-specific fields remain for their later design checkpoints. These
+  declarations do not yet initialize or enforce the locking protocol.
 
 **Finalized locking approach:** coders submit pair requests to one scheduler
 queue. The state/scheduler mutex protects queue order, any reservations, grants,
