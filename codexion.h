@@ -64,6 +64,14 @@ typedef enum e_cond_op
 	C_BROADCAST
 }	t_cond_op;
 
+typedef enum e_stop_reason
+{
+	STOP_NONE,
+	STOP_BURNOUT,
+	STOP_ALL_COMPLETE,
+	STOP_ERROR
+}	t_stop_reason;
+
 /*-------- Structs --------*/
 typedef struct s_dongle
 {
@@ -87,18 +95,23 @@ typedef struct s_coder
 
 struct s_sim
 {
-	int			n_coders;
-	int			time_burnout;
-	int			time_compile;
-	int			time_debug;
-	int			time_refact;
-	int			req_compiles;
-	int			dongle_cooldown;
-	char		*scheduler;
-	int			start_sim_time;
-	bool		end_sim;
-	t_dongle	*dongles;
-	t_coder		*coders;
+	int				n_coders;
+	int				time_burnout;
+	int				time_compile;
+	int				time_debug;
+	int				time_refact;
+	int				req_compiles;
+	int				dongle_cooldown;
+	char			*scheduler;
+	long long		sim_start_time;
+	t_mtx			sim_mtx;
+	bool			end_sim;
+	t_stop_reason	stop_reason;
+	int				finished_coders;
+	t_cond			state_changed;
+	t_dongle		*dongles;
+	t_coder			*coders;
+	t_mtx			output_mtx;
 };
 
 /*--------- Utils ---------*/

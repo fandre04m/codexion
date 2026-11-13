@@ -9,7 +9,9 @@ Only record implementation details here after the code works and has been tested
 
 ## Current project state
 
-The program currently parses eight arguments and allocates coder/dongle arrays. It does not yet create coder threads, schedule dongles, log state messages, monitor burnout, or fully clean up.
+The program currently parses eight arguments, allocates coder/dongle arrays,
+and has a monotonic millisecond-time helper. It does not yet create coder
+threads, schedule dongles, log state messages, monitor burnout, or fully clean up.
 
 ## Vocabulary
 
@@ -322,7 +324,7 @@ Update this only after an item exists and has been tested.
 | --- | --- | --- |
 | Argument parser | Eight arguments, numeric validation, FIFO/EDF validation | Built; valid/invalid examples checked |
 | Initial allocation | Coder/dongle arrays allocated | Partial: normal cleanup missing |
-| Time helpers | Not implemented | Not started |
+| Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
 | Initialization/cleanup | Not implemented | Not started |
 | Logging | Not implemented | Not started |
 | Heap scheduler | Not implemented | Not started |

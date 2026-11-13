@@ -107,8 +107,9 @@ helper and the agreed state/locking interface in the header. This is
 deliberately not worker, monitor, heap, or resource-grant code; those remain
 in later phases where their full prerequisites are initialized and testable.
 
-- [ ] Implement and test the monotonic millisecond-time helper, including
-  elapsed time from one supplied start timestamp.
+- [x] Implement and test the monotonic millisecond-time helper, including
+  elapsed time from a saved start timestamp. The user tested elapsed time;
+  clock-read failure returns `-1` but has not been deliberately injected.
 - [ ] Encode the agreed shared-state fields and lock-ownership interface in the
   header without starting threads or scheduling dongles.
 
