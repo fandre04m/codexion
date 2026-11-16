@@ -12,7 +12,8 @@
 
 NAME = codexion
 
-SRC = main.c utils.c parsing.c init.c safe_mutex.c safe_cond.c safe_thread.c
+SRC = main.c utils.c parsing.c init.c safe_mutex.c safe_cond.c safe_thread.c \
+			cleaner.c
 
 OBJ = $(SRC:.c=.o)
 

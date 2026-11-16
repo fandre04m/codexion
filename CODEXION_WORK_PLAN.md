@@ -29,7 +29,7 @@ implementation.
 | No global variables | Met so far | State is carried through `t_sim`; preserve this rule. |
 | Exact eight required arguments | Met | `main` requires `ac == 9`; parser recognizes seven numeric fields plus `fifo`/`edf`. |
 | Robust argument validation | Partial | Negative, malformed, overflow, zero coders, and bad schedulers are rejected. Decide and document intended handling for zero values in the other numeric fields. |
-| Simulation data ownership | Partial | Arrays are allocated, but dongles/coders are not initialized and failure/success cleanup is missing. `init_data()` failure is ignored by `main`. |
+| Simulation data ownership | Partial | Arrays are allocated and freed; `main` checks initialization. Dongle/coder elements and per-dongle cleanup remain to be implemented. |
 | One thread per coder | Missing | No worker entry point or thread creation in the flow. |
 | Separate burnout monitor | Missing | No monitor, deadline tracking, or coordinated stop exists. |
 | Two-dongle acquisition / one-coder case | Missing | Dongle pointers and individual state exist only as unused fields. |
@@ -38,7 +38,7 @@ implementation.
 | Deadlock / starvation prevention | Missing | No acquisition protocol exists yet. |
 | Serialized exact state logs | Missing | There is no elapsed-time function, output mutex, or state logger. Colour escape codes must never appear in required state lines. |
 | Stop on death or all required compiles | Missing | `end_sim` is not protected, read, or set. |
-| Cleanup and partial-init safety | Missing | No joins, mutex/condition destruction, or frees after normal init. |
+| Cleanup and partial-init safety | Partial | Simulation mutexes/condition and arrays have stage-based cleanup; partial-failure paths need testing, and dongle mutexes and thread joins remain. |
 | README required content | Missing | It has the required opening line and base headings, but Description is empty; usage, blocking cases, and synchronization sections are absent/incomplete. |
 
 ## Implementation order
@@ -129,17 +129,18 @@ thread. The plan records the working invariants and remaining scheduler question
 
 ### 2. Build safe initialization and teardown
 
-- [ ] Zero-initialize `t_sim` in `main` before parsing.
-- [ ] Make every allocation/init return status and check it in `main`.
-- [ ] Initialize the output mutex, simulation/scheduler mutex and condition,
-  then every dongle mutex, before creating threads.
+- [x] Zero-initialize `t_sim` in `main` before parsing.
+- [x] Check the existing allocation/init status in `main`; check future steps too.
+- [x] Initialize the output mutex, simulation mutex and condition before threads.
+- [x] Initialize every dongle's fields and mutex, tracking how many mutexes
+  succeeded. Normal initialization/cleanup runs passed Valgrind for one and
+  five dongles; partial-failure paths remain to be tested.
 - [ ] Fill coder IDs, compile counters, `sim` pointers, and circular left/right
   dongle references. For one coder, represent exactly one dongle and handle
   that special case deliberately.
-- [ ] Add a single cleanup function that can safely unwind each partially
-  initialized stage, then destroys initialized synchronization objects and
-  frees both arrays.
-- [ ] Correct `.PHONY` to list `all`.
+- [ ] Test each partial initialization failure path. Current cleanup destroys
+  tracked simulation objects and dongle mutexes, then frees both arrays.
+- [x] Ensure `.PHONY` lists `all`.
 
 **Exit checkpoint:** a small temporary initialization test (or a normal run
 with thread creation still disabled) succeeds and all allocation/init failures

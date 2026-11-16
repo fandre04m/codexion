@@ -72,13 +72,21 @@ typedef enum e_stop_reason
 	STOP_ERROR
 }	t_stop_reason;
 
+typedef enum e_clean_stage
+{
+	CLEAN_NONE,
+	CLEAN_SIM_MTX,
+	CLEAN_COND,
+	CLEAN_OUTPUT
+}	t_clean_stage;
+
 /*-------- Structs --------*/
 typedef struct s_dongle
 {
-	t_mtx		dongle_mtx;
 	int			dongle_id;
 	bool		in_use;
 	long long	ready_at;
+	t_mtx		dongle_mtx;
 }	t_dongle;
 
 typedef struct s_coder
@@ -112,6 +120,8 @@ struct s_sim
 	t_dongle		*dongles;
 	t_coder			*coders;
 	t_mtx			output_mtx;
+	t_clean_stage	clean_stage;
+	int				dongle_init;
 };
 
 /*--------- Utils ---------*/
@@ -133,5 +143,8 @@ int			safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
 int			safe_pthread_create(pthread_t *thread,
 				void *(*loop)(void *), void *coder);
 int			safe_pthread_join(pthread_t *thread);
+
+/*------- Cleaning --------*/
+int			clean_sim(t_sim *sim);
 
 #endif
