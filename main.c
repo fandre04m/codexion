@@ -29,7 +29,8 @@ int	main(int ac, char **av)
 		if (parse_input(&simulation, av))
 			return (1);
 		// 2-initiate data, mallocs, threads, mutex, etc.
-		init_data(&simulation);
+		if	(init_data(&simulation))
+			return (1);
 		// 3-Start simulation
 		// simulation_start(&simulation); TODO
 		//
