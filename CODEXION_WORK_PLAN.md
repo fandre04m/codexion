@@ -25,7 +25,7 @@ implementation.
 
 | Area | Status | Evidence / gap |
 | --- | --- | --- |
-| C / compiler flags / required Make rules | Partial | C and strict flags are present. `all`, `clean`, `fclean`, and `re` exist, but `.PHONY` says `al` rather than `all`. |
+| C / compiler flags / required Make rules | Met so far | C, strict flags, the required Make rules, and `.PHONY: all` are present. |
 | No global variables | Met so far | State is carried through `t_sim`; preserve this rule. |
 | Exact eight required arguments | Met | `main` requires `ac == 9`; parser recognizes seven numeric fields plus `fifo`/`edf`. |
 | Robust argument validation | Partial | Negative, malformed, overflow, zero coders, and bad schedulers are rejected. Decide and document intended handling for zero values in the other numeric fields. |
@@ -133,14 +133,14 @@ thread. The plan records the working invariants and remaining scheduler question
 - [x] Check the existing allocation/init status in `main`; check future steps too.
 - [x] Initialize the output mutex, simulation mutex and condition before threads.
 - [x] Initialize every dongle's fields and mutex, tracking how many mutexes
-  succeeded. Normal initialization/cleanup runs passed Valgrind for one and
-  five dongles; partial-failure paths remain to be tested.
-- [ ] Fill coder IDs, compile counters, `sim` pointers, and circular left/right
-  dongle references. For one coder, represent exactly one dongle and handle
-  that special case deliberately.
-- [ ] Test each partial initialization failure path. Current cleanup destroys
-  tracked simulation objects and dongle mutexes, then frees both arrays.
-- [x] Ensure `.PHONY` lists `all`.
+  succeeded. Normal one- and five-dongle runs passed Valgrind; a simulated
+  third-mutex failure exercised partial cleanup.
+- [x] Fill coder IDs, compile counters, `sim` pointers, and circular left/right
+  dongle references. The one-coder acquisition special case remains for the
+  scheduler phase.
+- [x] Exercise simulated failures of the simulation mutexes, condition, both
+  allocations, and a dongle mutex. Cleanup uses the recorded stage/count and
+  frees the arrays; Valgrind reported no memory errors in the injected runs.
 
 **Exit checkpoint:** a small temporary initialization test (or a normal run
 with thread creation still disabled) succeeds and all allocation/init failures

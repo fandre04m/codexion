@@ -10,9 +10,9 @@ Only record implementation details here after the code works and has been tested
 ## Current project state
 
 The program parses eight arguments, allocates coder/dongle arrays, initializes
-simulation-wide synchronization objects and dongles, and has a monotonic time
-helper. It cleans up those current resources but does not yet initialize coder
-elements, create threads, schedule dongles, log state messages, or monitor burnout.
+simulation-wide synchronization objects, dongles, and coder elements, and has
+a monotonic time helper. It cleans up current resources but does not yet create
+threads, schedule dongles, log state messages, or monitor burnout.
 
 ## Vocabulary
 
@@ -333,10 +333,10 @@ Update this only after an item exists and has been tested.
 | Component | What exists now | Test status |
 | --- | --- | --- |
 | Argument parser | Eight arguments, numeric validation, FIFO/EDF validation | Built; valid/invalid examples checked |
-| Initial allocation | Coder/dongle arrays allocated and freed | Normal initialization run passed Valgrind; failure paths not injected |
+| Initial allocation | Coder/dongle arrays allocated and freed | Normal runs and both injected allocation failures passed Valgrind |
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
 | Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; synchronization behaviour not yet implemented |
-| Initialization/cleanup | Simulation objects tracked by stage; initialized dongle mutexes tracked by count and destroyed; arrays freed | One- and five-dongle normal paths passed Valgrind; coder initialization and failure-path tests remain |
+| Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
 | Logging | Not implemented | Not started |
 | Heap scheduler | Not implemented | Not started |
 | Coder workers | Not implemented | Not started |

@@ -31,6 +31,25 @@ static int	init_dongles(t_sim *sim)
 	return (0);
 }
 
+static void	init_coders(t_sim *sim)
+{
+	int		i;
+	t_coder	*coder;
+
+	i = -1;
+	while (++i < sim->n_coders)
+	{
+		coder = sim->coders + i;
+		coder->coder_id = i + 1;
+		coder->n_compiles = 0;
+		coder->finished = false;
+		coder->last_comp_start = 0;
+		coder->left_dongle = &sim->dongles[i];
+		coder->right_dongle = &sim->dongles[(i + 1) % sim->n_coders];
+		coder->sim = sim;
+	}
+}
+
 int	init_data(t_sim *sim)
 {
 	if (safe_mutex_handle(&sim->sim_mtx, M_INIT))
