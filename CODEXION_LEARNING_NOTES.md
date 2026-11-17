@@ -304,8 +304,9 @@ intended to make each state message a complete, unmixed line. A first normal-lin
 logger passed a single-thread test; concurrency remains untested. The stop check must be coordinated with
 printing: checking `end_sim` and releasing its mutex before printing would let
 the monitor announce burnout in between, followed by a normal line. The
-first logger will be called without either mutex held. Whenever both mutexes
-are needed, take `sim_mtx` first and
+logger has a `sim_lock_held` flag: when false, it takes and releases `sim_mtx`;
+when true, its caller must hold that mutex and retains it on return. The stop
+check applies in both cases. Whenever both mutexes are needed, take `sim_mtx` first and
 `output_mtx` second, then release them in reverse order. Holding `sim_mtx`
 through the normal stop check and print prevents a burnout decision from
 slipping between them. Keep this protected work brief; printing can itself
@@ -317,10 +318,13 @@ between them. A stop can suppress the remaining normal messages, leaving a
 partial sequence.
 
 The monitor must be able to print its authorized burnout line after setting
-`end_sim`, while normal lines are suppressed after stop. A future entry point
-for callers already holding `sim_mtx`, failure handling, output buffering, and
-monitor timing remain to be designed and tested. The first logger must release
-acquired locks on error and must not print an invalid timestamp on clock failure.
+`end_sim`, while normal lines are suppressed after stop. The flag-based lock
+ownership paths passed single-thread checks; concurrency, output buffering, and
+monitor timing remain to be tested.
+During development, detailed runtime error propagation is deferred; diagnostics
+can help investigate failures. Currently a failed clock read can lead to an
+invalid timestamp, and mutex/output failures are not handled. Revisit the
+plausible failures and cleanup before evaluation.
 
 ### 8. Stopping and cleanup
 
@@ -363,7 +367,7 @@ Update this only after an item exists and has been tested.
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
 | Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; runtime synchronization behaviour not yet implemented |
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
-| Logging | First normal-line logger checks stop, reads time and prints under mutexes | Single-thread formatting, elapsed-time and stop-suppression test passed Valgrind; concurrency, mutex/output errors and monitor path remain |
+| Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Both ownership paths and stop suppression tested single-threaded; concurrency, error handling and monitor path remain |
 | Heap scheduler | Not implemented | Not started |
 | Coder workers | Not implemented | Not started |
 | Burnout monitor | Not implemented | Not started |

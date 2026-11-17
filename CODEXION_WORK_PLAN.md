@@ -148,33 +148,33 @@ allocation/init failures were exercised with thread creation still disabled.
 
 ### 3. Implement logging and lifecycle primitives
 
-**First logging step:** implement a normal one-line logger for callers that
-hold neither mutex. It takes `sim_mtx`, checks `end_sim`, then takes
-`output_mtx` to print if still running; release the locks in reverse order.
-Use the existing safe mutex handler, keep the protected work brief, and release
-every successfully acquired lock on errors. A future entry point for callers
-already holding `sim_mtx` will be designed when needed.
+**Normal logging:** `log_state` has a `sim_lock_held` flag: it takes and
+releases `sim_mtx` only when the caller does not already hold it. It checks
+`end_sim`, then uses `output_mtx` for printing. Lock order is `sim_mtx` then
+`output_mtx`; a caller-held `sim_mtx` remains held on return. Both flag paths
+and stop suppression were checked in single-thread tests.
 
 Normal logging checks the stop state while `sim_mtx` remains held through
 printing. The monitor's authorized burnout line must still be printable after
 it sets the stop state; the exact interface for distinguishing it from normal
-messages remains to be designed. A failed clock read must not produce an invalid
-timestamp. Monitor timing, output blocking/buffering, and error propagation
-need further design and testing. A first normal-line logger is implemented;
-its mutex-handler and output return values are not yet checked.
+messages remains to be designed. Monitor timing and output blocking/buffering
+need further design and testing. During development, detailed runtime error
+propagation is deferred: existing diagnostics help investigation, but a clock
+failure currently allows an invalid timestamp and lock/output failures are not
+handled. Revisit plausible failures and cleanup before evaluation.
 
-- [ ] Test and finish `log_state(coder, message)`: coordinate the stop check
-  under `sim_mtx` with output under `output_mtx`, use a consistent lock order,
-  and print one required line with elapsed milliseconds. Later, define how
-  callers already holding `sim_mtx` log without locking it twice.
+- [x] Create the normal-message `log_state` function with a `sim_lock_held`
+  flag, stop check, elapsed timestamp, and serialized output.
+- [x] Test `log_state` with `sim_lock_held` both false and true, including
+  stop suppression and the caller retaining its lock in the true case.
 - [x] Test normal-line formatting and elapsed time, and suppress a line after
   stop in a temporary single-thread path; Valgrind reported no errors or leaks.
-- [ ] Check lock/unlock and output failures; do not continue as if a failed
-  lock was acquired, and release locks already held on error.
+- [ ] Before evaluation, review clock, lock/unlock, and output failure handling,
+  propagation and cleanup; avoid treating a failed lock as acquired.
 - [ ] Keep each coder's own messages in action order; other coders' lines may
   appear between them. Stop suppresses remaining normal messages.
 - [ ] Keep errors on `stderr`; state lines go to `stdout` and contain no colour
-  codes or extra wording.
+  codes or extra wording. Remove temporary logger debug prints after testing.
 - [ ] Add helpers to atomically query/request a stop and to notify all waiters.
 - [ ] Implement interruptible phase waiting (compile, debug, refactor) so a
   detected burnout ends workers promptly.

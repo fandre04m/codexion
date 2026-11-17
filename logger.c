@@ -12,27 +12,25 @@
 
 #include "codexion.h"
 
-int	log_state(t_coder *coder, char *msg)
+int	log_state(t_coder *coder, char *msg, bool sim_lock_held)
 {
 	long long	elapsed;
 	long long	now;
 
-	safe_mutex_handle(&coder->sim->sim_mtx, M_LOCK);
+	if (!sim_lock_held)
+		safe_mutex_handle(&coder->sim->sim_mtx, M_LOCK);
 	if (coder->sim->end_sim)
 	{
-		safe_mutex_handle(&coder->sim->sim_mtx, M_UNLOCK);
+		if (!sim_lock_held)
+			safe_mutex_handle(&coder->sim->sim_mtx, M_UNLOCK);
 		return (0);
 	}
-	now = current_time_ms();
-	if (now == -1)
-	{
-		safe_mutex_handle(&coder->sim->sim_mtx, M_UNLOCK);
-		return (1);
-	}
-	elapsed = now - coder->sim->sim_start_time;
 	safe_mutex_handle(&coder->sim->output_mtx, M_LOCK);
+	now = current_time_ms();
+	elapsed = now - coder->sim->sim_start_time;
 	printf("%lld %d %s\n", elapsed, coder->coder_id, msg);
 	safe_mutex_handle(&coder->sim->output_mtx, M_UNLOCK);
-	safe_mutex_handle(&coder->sim->sim_mtx, M_UNLOCK);
+	if (!sim_lock_held)
+		safe_mutex_handle(&coder->sim->sim_mtx, M_UNLOCK);
 	return (0);
 }
