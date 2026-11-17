@@ -12,13 +12,6 @@
 
 #include "codexion.h"
 
-/*
- * Required imput format:
- *					'5 800 100 100 100 5 50 fifo'
- *	n_coders/burnout/compile/debug/refact/n_compiles/cooldown/scheduler
- *	all these are times in miliseconds, last must be str 'fifo' or 'edf'
- */
-
 int	main(int ac, char **av)
 {
 	t_sim		simulation;
@@ -33,8 +26,6 @@ int	main(int ac, char **av)
 			clean_sim(&simulation);
 			return (1);
 		}
-		// 3-Start simulation
-		// simulation_start(&simulation); TODO
 		if (clean_sim(&simulation))
 			return (1);
 	}

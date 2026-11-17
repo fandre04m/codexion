@@ -36,7 +36,7 @@ update.
 | Mandatory cooldown | Missing | `ready_at` is initialized to zero but is not updated on release, checked, or waited on. |
 | FIFO and EDF arbitration with custom heap | Missing | Scheduler name is parsed, but no queue/heap, request sequence, EDF key, or deterministic tie-breaker exists. |
 | Deadlock / starvation prevention | Missing | No acquisition protocol exists yet. |
-| Serialized exact state logs | Missing | The time helper and initialized output mutex exist, but no state logger or simulation start timestamp is in use. State lines must not contain colour codes. |
+| Serialized exact state logs | Partial | The normal-line logger passed a single-thread formatting, elapsed-time, and stop-suppression test; concurrency, monitor, and error handling remain incomplete. |
 | Stop on death or all required compiles | Missing | `end_sim` and its reason are initialized, but no runtime stop protocol exists. |
 | Cleanup and partial-init safety | Partial | Stage/count-based cleanup covers current resources; recorded injected failure tests passed. Thread joins and their failure paths remain. |
 | README required content | Missing | It has the required opening line and base headings, but Description is empty; usage, blocking cases, and synchronization sections are absent/incomplete. |
@@ -148,30 +148,31 @@ allocation/init failures were exercised with thread creation still disabled.
 
 ### 3. Implement logging and lifecycle primitives
 
-**Agreed logging interface:** use one logging mechanism with two entry points.
-The public entry point is for a caller that does not hold `sim_mtx`: it locks
-that mutex, delegates to the locked entry point, then unlocks it. The locked
-entry point assumes its caller already holds `sim_mtx` and leaves it held; it
-uses `output_mtx` for printing. This distinction is based on lock ownership,
-not thread type: the monitor and a coder can each need either entry point.
-Whenever both locks are held, acquire `sim_mtx` before `output_mtx` and release
-them in reverse order. Keep the protected work brief.
+**First logging step:** implement a normal one-line logger for callers that
+hold neither mutex. It takes `sim_mtx`, checks `end_sim`, then takes
+`output_mtx` to print if still running; release the locks in reverse order.
+Use the existing safe mutex handler, keep the protected work brief, and release
+every successfully acquired lock on errors. A future entry point for callers
+already holding `sim_mtx` will be designed when needed.
 
 Normal logging checks the stop state while `sim_mtx` remains held through
 printing. The monitor's authorized burnout line must still be printable after
 it sets the stop state; the exact interface for distinguishing it from normal
-messages remains to be designed. Likewise, decide how to handle clock and
-mutex failures and how the grouped compile-start log uses these entry points.
-These are design decisions only; logging has not yet been implemented.
+messages remains to be designed. A failed clock read must not produce an invalid
+timestamp. Monitor timing, output blocking/buffering, and error propagation
+need further design and testing. A first normal-line logger is implemented;
+its mutex-handler and output return values are not yet checked.
 
-- [ ] Design and add `log_state(coder, message)`: coordinate the stop check
+- [ ] Test and finish `log_state(coder, message)`: coordinate the stop check
   under `sim_mtx` with output under `output_mtx`, use a consistent lock order,
-  and print one required line with elapsed milliseconds. Define how callers
-  that already hold `sim_mtx` log without locking it twice.
-- [ ] Design a grouped compile-start log: print the same coder's two dongle
-  acquisition lines consecutively, immediately followed by its compiling
-  line, without another coder's message between them. Timestamps need not
-  match. Coordinate the group with stop and compile-start decisions.
+  and print one required line with elapsed milliseconds. Later, define how
+  callers already holding `sim_mtx` log without locking it twice.
+- [x] Test normal-line formatting and elapsed time, and suppress a line after
+  stop in a temporary single-thread path; Valgrind reported no errors or leaks.
+- [ ] Check lock/unlock and output failures; do not continue as if a failed
+  lock was acquired, and release locks already held on error.
+- [ ] Keep each coder's own messages in action order; other coders' lines may
+  appear between them. Stop suppresses remaining normal messages.
 - [ ] Keep errors on `stderr`; state lines go to `stdout` and contain no colour
   codes or extra wording.
 - [ ] Add helpers to atomically query/request a stop and to notify all waiters.
@@ -194,8 +195,8 @@ the ordering between normal output and a burnout stop.
   unrelated eligible pairs to proceed even when a higher-priority pair waits.
 - [ ] On release, set each dongle's `ready_at` to release time plus cooldown,
   update any scheduler bookkeeping, notify waiters, and prevent early grants.
-- [ ] Ensure each `is compiling` line immediately follows that coder's two
-  consecutive `has taken a dongle` lines.
+- [ ] Ensure each coder logs its two dongle acquisitions before compiling;
+  other coders' lines may occur between them.
 - [ ] Specify the one-coder path: it can take the sole dongle but cannot obtain
   a second one, so the monitor must report burnout without a deadlock.
 

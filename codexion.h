@@ -144,6 +144,9 @@ int			safe_pthread_create(pthread_t *thread,
 				void *(*loop)(void *), void *coder);
 int			safe_pthread_join(pthread_t *thread);
 
+/*-------- Logging --------*/
+int	log_state(t_coder *coder, char *msg);
+
 /*------- Cleaning --------*/
 int			clean_sim(t_sim *sim);
 

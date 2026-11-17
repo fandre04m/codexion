@@ -193,7 +193,11 @@ gettimeofday is the permitted calendar/wall-clock option. It is acceptable, but 
 
 At the start, every coder's first deadline is based on start_time. When a coder receives both dongles and is truly about to compile, record last_compile_start immediately before logging “is compiling.”
 
-At a deadline, the monitor and scheduler must not make contradictory decisions. Either compile start is safely recorded first and creates a new deadline, or burnout is recorded first and stops the simulation. Protection rules make only one result win.
+At a deadline, the monitor and worker must not make contradictory decisions.
+The worker must check the current deadline under the shared lock before
+recording a new compile start; it cannot renew an already expired deadline
+just because the monitor has not run yet. The monitor detects burnout and
+records the stop decision.
 
 The monitor exists because a blocked/sleeping worker cannot reliably detect its own deadline. It must announce burnout within the subject's 10 ms allowance.
 
@@ -296,36 +300,27 @@ acquisition occurs before compile_start + time_to_compile + cooldown.
 ### 7. Serialized logging
 
 Multiple threads can mix output characters. The initialized output mutex is
-intended to make each state message a complete, unmixed line; a state logger
-has not yet been implemented. The stop check must also be coordinated with
+intended to make each state message a complete, unmixed line. A first normal-line
+logger passed a single-thread test; concurrency remains untested. The stop check must be coordinated with
 printing: checking `end_sim` and releasing its mutex before printing would let
 the monitor announce burnout in between, followed by a normal line. The
-logging design uses two entry points to handle lock ownership:
-
-- The public entry point is called without `sim_mtx` held. It locks
-  `sim_mtx`, delegates to the locked entry point, and unlocks `sim_mtx`.
-- The locked entry point assumes the caller already holds `sim_mtx`. It uses
-  `output_mtx` to print and returns with `sim_mtx` still held by the caller.
-
-This depends on what the caller already holds, not whether it is a coder or
-the monitor. Whenever both mutexes are needed, take `sim_mtx` first and
+first logger will be called without either mutex held. Whenever both mutexes
+are needed, take `sim_mtx` first and
 `output_mtx` second, then release them in reverse order. Holding `sim_mtx`
 through the normal stop check and print prevents a burnout decision from
 slipping between them. Keep this protected work brief; printing can itself
 block, which is a tradeoff of this ordering.
 
-The monitor must be able to print its authorized burnout line after setting
-`end_sim`, while normal lines are suppressed after stop. How the interface
-expresses that distinction, handles failures, and supports the grouped
-compile-start output remains to be designed and tested.
+Each coder's messages follow its own action order: two dongle acquisitions,
+then compiling, debugging, and refactoring. Other coders' lines may occur
+between them. A stop can suppress the remaining normal messages, leaving a
+partial sequence.
 
-Our chosen output rule for a compile start is a group of three consecutive
-lines for the same coder: two `has taken a dongle` lines followed immediately
-by `is compiling`. Their timestamps need not be identical. The group must be
-coordinated with the pair grant, compile-start decision, and stop state; its
-locking interface is still to be designed and tested. This grouping is our
-project requirement; the subject explicitly illustrates the sequence but does
-not clearly require the lines to be adjacent.
+The monitor must be able to print its authorized burnout line after setting
+`end_sim`, while normal lines are suppressed after stop. A future entry point
+for callers already holding `sim_mtx`, failure handling, output buffering, and
+monitor timing remain to be designed and tested. The first logger must release
+acquired locks on error and must not print an invalid timestamp on clock failure.
 
 ### 8. Stopping and cleanup
 
@@ -368,7 +363,7 @@ Update this only after an item exists and has been tested.
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
 | Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; runtime synchronization behaviour not yet implemented |
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
-| Logging | Not implemented | Not started |
+| Logging | First normal-line logger checks stop, reads time and prints under mutexes | Single-thread formatting, elapsed-time and stop-suppression test passed Valgrind; concurrency, mutex/output errors and monitor path remain |
 | Heap scheduler | Not implemented | Not started |
 | Coder workers | Not implemented | Not started |
 | Burnout monitor | Not implemented | Not started |
