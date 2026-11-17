@@ -304,7 +304,7 @@ intended to make each state message a complete, unmixed line. A first normal-lin
 logger passed a single-thread test; concurrency remains untested. The stop check must be coordinated with
 printing: checking `end_sim` and releasing its mutex before printing would let
 the monitor announce burnout in between, followed by a normal line. The
-logger has a `sim_lock_held` flag: when false, it takes and releases `sim_mtx`;
+logger has a `sim_mtx_held` flag: when false, it takes and releases `sim_mtx`;
 when true, its caller must hold that mutex and retains it on return. The stop
 check applies in both cases. Whenever both mutexes are needed, take `sim_mtx` first and
 `output_mtx` second, then release them in reverse order. Holding `sim_mtx`
@@ -331,18 +331,25 @@ plausible failures and cleanup before evaluation.
 One burnout or universal completion stops the simulation. The shared state has:
 
     end_sim
-    stop_reason = burnout | all_complete
+    stop_reason = none | burnout | all_complete | error
 
 The simulation-state mutex protects both values. The first valid thread to set
 `end_sim` wins; later threads see it is already true and leave the original
 reason unchanged.
 
-The monitor is the only thread that may announce burnout. While holding the
-state mutex, it confirms that a coder's current deadline has passed, sets the
-stop state, prints the one required `burned out` line through the output
-serializer, and broadcasts the state-change condition. Normal logging checks
-the same stop state before printing, so no normal state line can follow that
-burnout line.
+The `stop_handler` helper accepts a stop reason and, under `sim_mtx`, records
+the first stop and broadcasts `state_changed`. Like the logger, it will have a
+flag describing whether its caller already holds the mutex. It returns `true`
+when it recorded the stop and `false` when the simulation was already stopped.
+Callers should request an actual stop reason, not `STOP_NONE`.
+
+The monitor is the only thread that may announce burnout. While holding
+`sim_mtx`, it will confirm the deadline, request `STOP_BURNOUT`, and print the
+one authorized `burned out` line only if its request recorded the stop. The
+monitor uses a separate burnout-capable output path because normal logging
+suppresses messages after stop. A broadcast inside the helper can happen before
+the line: waiters cannot recheck the state until the monitor releases `sim_mtx`.
+Normal logging checks that same state, so no normal line follows burnout.
 
 Normal completion is counted after a compile phase finishes. Each coder has a
 protected completed-compile count and `finished` flag. When a worker reaches
@@ -368,6 +375,7 @@ Update this only after an item exists and has been tested.
 | Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; runtime synchronization behaviour not yet implemented |
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
 | Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Both ownership paths and stop suppression tested single-threaded; concurrency, error handling and monitor path remain |
+| Stop helper | First stop records its reason and broadcasts; a flag describes mutex ownership | Both ownership paths and competing reasons checked; separate waiting-thread broadcast test passed Valgrind |
 | Heap scheduler | Not implemented | Not started |
 | Coder workers | Not implemented | Not started |
 | Burnout monitor | Not implemented | Not started |

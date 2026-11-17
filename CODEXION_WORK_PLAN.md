@@ -148,7 +148,7 @@ allocation/init failures were exercised with thread creation still disabled.
 
 ### 3. Implement logging and lifecycle primitives
 
-**Normal logging:** `log_state` has a `sim_lock_held` flag: it takes and
+**Normal logging:** `log_state` has a `sim_mtx_held` flag: it takes and
 releases `sim_mtx` only when the caller does not already hold it. It checks
 `end_sim`, then uses `output_mtx` for printing. Lock order is `sim_mtx` then
 `output_mtx`; a caller-held `sim_mtx` remains held on return. Both flag paths
@@ -163,25 +163,34 @@ propagation is deferred: existing diagnostics help investigation, but a clock
 failure currently allows an invalid timestamp and lock/output failures are not
 handled. Revisit plausible failures and cleanup before evaluation.
 
-- [x] Create the normal-message `log_state` function with a `sim_lock_held`
+- [x] Create the normal-message `log_state` function with a `sim_mtx_held`
   flag, stop check, elapsed timestamp, and serialized output.
-- [x] Test `log_state` with `sim_lock_held` both false and true, including
+- [x] Test `log_state` with `sim_mtx_held` both false and true, including
   stop suppression and the caller retaining its lock in the true case.
 - [x] Test normal-line formatting and elapsed time, and suppress a line after
   stop in a temporary single-thread path; Valgrind reported no errors or leaks.
+- [x] Stop helper: implement a shared
+  stop request for burnout, completion, and runtime errors. Under `sim_mtx`,
+  the first request sets `end_sim` and `stop_reason` and broadcasts
+  `state_changed`; later requests leave the original state unchanged. A lock
+  ownership flag follows the logger's caller-held contract.
+- [x] Test stop requests with both lock-ownership paths and competing reasons;
+  confirm only the first request reports a new stop. A separate threaded test
+  confirmed a blocked waiter wakes; Valgrind reported no errors or leaks.
+- [ ] Design and test the monitor's authorized burnout output: while holding
+  `sim_mtx`, confirm burnout, request the stop, and print only if that request
+  recorded it. This path must work after `end_sim` is true and coordinate with
+  normal logging. The actual monitor thread is implemented in Phase 5.
+- [ ] Implement and test interruptible phase waiting (compile, debug, refactor)
+  so a stop wakes waiting workers.
+- [ ] Test concurrent logger serialization and stop ordering. State lines go
+  to `stdout` without colour or extra wording; errors go to `stderr`.
 - [ ] Before evaluation, review clock, lock/unlock, and output failure handling,
   propagation and cleanup; avoid treating a failed lock as acquired.
-- [ ] Keep each coder's own messages in action order; other coders' lines may
-  appear between them. Stop suppresses remaining normal messages.
-- [ ] Keep errors on `stderr`; state lines go to `stdout` and contain no colour
-  codes or extra wording. Remove temporary logger debug prints after testing.
-- [ ] Add helpers to atomically query/request a stop and to notify all waiters.
-- [ ] Implement interruptible phase waiting (compile, debug, refactor) so a
-  detected burnout ends workers promptly.
 
-**Exit checkpoint:** a temporary single-thread path checks formatting and
-timestamps from one shared start; a concurrent test checks serialization and
-the ordering between normal output and a burnout stop.
+**Exit checkpoint:** the stop helper and interruptible waits are tested, and
+logging tests cover formatting, serialization, and burnout-stop ordering. Later
+worker integration must preserve each coder's action order.
 
 ### 4. Implement the scheduler and cooldown
 
