@@ -6,20 +6,20 @@
 > Use `CODEXION_LEARNING_NOTES.md` alongside this plan for plain-language
 > explanations and the implementation journal.
 
-## Current snapshot — 2026-11-09
+## Current snapshot — 2026-11-16
 
-The project compiles cleanly with `-Wall -Wextra -Werror -pthread` and the
-parser rejects a zero coder count and an unknown scheduler. The successful
-command below currently exits with status 0 and prints no simulation output:
+The current program parses arguments, initializes the simulation and its
+coders and dongles, then cleans up and exits. It has a monotonic millisecond
+helper, but does not start threads or print simulation state. The next step is
+Phase 3: logging and lifecycle primitives. An example invocation is:
 
 ```sh
 ./codexion 5 800 100 100 100 5 50 fifo
 ```
 
-`codexion_subject.md` is currently untracked, and `later_info.txt` is shown as
-deleted by Git. Those pre-existing repository changes are not part of this
-plan; do not restore, remove, or commit them accidentally while working on the
-implementation.
+The initialization and failure-path test results recorded in Phase 2 are
+from the earlier work session; they have not been rerun in this documentation
+update.
 
 ## Requirement audit
 
@@ -28,17 +28,17 @@ implementation.
 | C / compiler flags / required Make rules | Met so far | C, strict flags, the required Make rules, and `.PHONY: all` are present. |
 | No global variables | Met so far | State is carried through `t_sim`; preserve this rule. |
 | Exact eight required arguments | Met | `main` requires `ac == 9`; parser recognizes seven numeric fields plus `fifo`/`edf`. |
-| Robust argument validation | Partial | Negative, malformed, overflow, zero coders, and bad schedulers are rejected. Decide and document intended handling for zero values in the other numeric fields. |
-| Simulation data ownership | Partial | Arrays are allocated and freed; `main` checks initialization. Dongle/coder elements and per-dongle cleanup remain to be implemented. |
+| Robust argument validation | Partial | Negative, malformed, overflow, zero coders, and bad schedulers are rejected. Other numeric fields currently accept zero; decide whether that is the intended policy. |
+| Simulation data ownership | Partial | Arrays and elements are initialized and freed; `main` checks initialization. Thread ownership and joins remain. |
 | One thread per coder | Missing | No worker entry point or thread creation in the flow. |
 | Separate burnout monitor | Missing | No monitor, deadline tracking, or coordinated stop exists. |
 | Two-dongle acquisition / one-coder case | Missing | Dongle pointers and individual state exist only as unused fields. |
-| Mandatory cooldown | Missing | `ready_at` exists but is never set, checked, or waited on. |
+| Mandatory cooldown | Missing | `ready_at` is initialized to zero but is not updated on release, checked, or waited on. |
 | FIFO and EDF arbitration with custom heap | Missing | Scheduler name is parsed, but no queue/heap, request sequence, EDF key, or deterministic tie-breaker exists. |
 | Deadlock / starvation prevention | Missing | No acquisition protocol exists yet. |
-| Serialized exact state logs | Missing | There is no elapsed-time function, output mutex, or state logger. Colour escape codes must never appear in required state lines. |
-| Stop on death or all required compiles | Missing | `end_sim` is not protected, read, or set. |
-| Cleanup and partial-init safety | Partial | Simulation mutexes/condition and arrays have stage-based cleanup; partial-failure paths need testing, and dongle mutexes and thread joins remain. |
+| Serialized exact state logs | Missing | The time helper and initialized output mutex exist, but no state logger or simulation start timestamp is in use. State lines must not contain colour codes. |
+| Stop on death or all required compiles | Missing | `end_sim` and its reason are initialized, but no runtime stop protocol exists. |
+| Cleanup and partial-init safety | Partial | Stage/count-based cleanup covers current resources; recorded injected failure tests passed. Thread joins and their failure paths remain. |
 | README required content | Missing | It has the required opening line and base headings, but Description is empty; usage, blocking cases, and synchronization sections are absent/incomplete. |
 
 ## Implementation order
@@ -78,8 +78,8 @@ explanation makes sense.
   a fresh `CLOCK_REALTIME` value to form its required absolute deadline; never
   pass a monotonic timestamp directly to that wait.
 - [x] **Atomic pair assignment.** Understood: a scheduler-protected decision
-  grants access only when both required dongles are available. A priority
-  higher-priority request may wait for its partner, but no worker physically holds only one
+  grants access only when both required dongles are available. A higher-priority
+  request may wait for its partner, but no worker physically holds only one
   dongle; no other scheduler action can interleave with the pair decision.
 - [x] **Cooldown.** Understood: releasing a dongle sets
   `ready_at = release_time + dongle_cooldown`; it cannot be assigned before
@@ -113,7 +113,8 @@ in later phases where their full prerequisites are initialized and testable.
 - [x] Declare the currently agreed shared-state and synchronization fields in
   the header; document lock ownership in the learning notes. Scheduler and
   monitor-specific fields remain for their later design checkpoints. These
-  declarations do not yet initialize or enforce the locking protocol.
+  declarations do not themselves enforce the locking protocol; the current
+  synchronization objects are initialized in Phase 2.
 
 **Working locking approach:** the state/scheduler mutex protects scheduling
 decisions, coder state, and stop state; its condition variable wakes waiters.
@@ -142,22 +143,44 @@ thread. The plan records the working invariants and remaining scheduler question
   allocations, and a dongle mutex. Cleanup uses the recorded stage/count and
   frees the arrays; Valgrind reported no memory errors in the injected runs.
 
-**Exit checkpoint:** a small temporary initialization test (or a normal run
-with thread creation still disabled) succeeds and all allocation/init failures
-have one cleanup path.
+**Exit checkpoint — complete:** normal initialization and the recorded injected
+allocation/init failures were exercised with thread creation still disabled.
 
 ### 3. Implement logging and lifecycle primitives
 
-- [ ] Add `log_state(coder, message)` that locks one output mutex, checks the
-  stop rule, and prints exactly one required line with elapsed milliseconds.
+**Agreed logging interface:** use one logging mechanism with two entry points.
+The public entry point is for a caller that does not hold `sim_mtx`: it locks
+that mutex, delegates to the locked entry point, then unlocks it. The locked
+entry point assumes its caller already holds `sim_mtx` and leaves it held; it
+uses `output_mtx` for printing. This distinction is based on lock ownership,
+not thread type: the monitor and a coder can each need either entry point.
+Whenever both locks are held, acquire `sim_mtx` before `output_mtx` and release
+them in reverse order. Keep the protected work brief.
+
+Normal logging checks the stop state while `sim_mtx` remains held through
+printing. The monitor's authorized burnout line must still be printable after
+it sets the stop state; the exact interface for distinguishing it from normal
+messages remains to be designed. Likewise, decide how to handle clock and
+mutex failures and how the grouped compile-start log uses these entry points.
+These are design decisions only; logging has not yet been implemented.
+
+- [ ] Design and add `log_state(coder, message)`: coordinate the stop check
+  under `sim_mtx` with output under `output_mtx`, use a consistent lock order,
+  and print one required line with elapsed milliseconds. Define how callers
+  that already hold `sim_mtx` log without locking it twice.
+- [ ] Design a grouped compile-start log: print the same coder's two dongle
+  acquisition lines consecutively, immediately followed by its compiling
+  line, without another coder's message between them. Timestamps need not
+  match. Coordinate the group with stop and compile-start decisions.
 - [ ] Keep errors on `stderr`; state lines go to `stdout` and contain no colour
   codes or extra wording.
 - [ ] Add helpers to atomically query/request a stop and to notify all waiters.
 - [ ] Implement interruptible phase waiting (compile, debug, refactor) so a
   detected burnout ends workers promptly.
 
-**Exit checkpoint:** a temporary single-thread path produces complete,
-non-interleaved state lines with timestamps measured from one shared start.
+**Exit checkpoint:** a temporary single-thread path checks formatting and
+timestamps from one shared start; a concurrent test checks serialization and
+the ordering between normal output and a burnout stop.
 
 ### 4. Implement the scheduler and cooldown
 
@@ -171,7 +194,8 @@ non-interleaved state lines with timestamps measured from one shared start.
   unrelated eligible pairs to proceed even when a higher-priority pair waits.
 - [ ] On release, set each dongle's `ready_at` to release time plus cooldown,
   update any scheduler bookkeeping, notify waiters, and prevent early grants.
-- [ ] Ensure two `has taken a dongle` lines precede every `is compiling` line.
+- [ ] Ensure each `is compiling` line immediately follows that coder's two
+  consecutive `has taken a dongle` lines.
 - [ ] Specify the one-coder path: it can take the sole dongle but cannot obtain
   a second one, so the monitor must report burnout without a deadlock.
 
@@ -242,9 +266,3 @@ Run each case repeatedly (not just once); capture output and exit status.
 - Add a short dated note below only for a decision that changes implementation;
   remove notes that no longer affect future work.
 
-## Decision log
-
-- 2026-11-09 — No implementation files were changed during the initial audit.
-  The next coding task is design/state ownership followed by initialization and
-  teardown; writing worker threads before that would duplicate synchronization
-  decisions.

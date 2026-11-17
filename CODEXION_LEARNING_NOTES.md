@@ -61,8 +61,9 @@ The scheduler mutex and dongle mutexes have different jobs:
 
 In the current header, these are named `sim_mtx` and `dongle_mtx`;
 `output_mtx` is for serialized output and `state_changed` is the shared
-condition variable. They have been declared, but initialization and actual
-locking/waking behaviour are still to be implemented and tested.
+condition variable. These objects and the per-dongle mutexes are initialized
+and cleaned up. Runtime locking and waking behaviour remain to be implemented
+and tested; initialization happens before any threads exist.
 
 For a pair assignment, the scheduler takes the state mutex first, then locks
 the two required dongles in ascending ID order. It checks entitlement,
@@ -294,7 +295,37 @@ acquisition occurs before compile_start + time_to_compile + cooldown.
 
 ### 7. Serialized logging
 
-Multiple threads can mix output characters. One output mutex will make every state message a complete, unmixed line.
+Multiple threads can mix output characters. The initialized output mutex is
+intended to make each state message a complete, unmixed line; a state logger
+has not yet been implemented. The stop check must also be coordinated with
+printing: checking `end_sim` and releasing its mutex before printing would let
+the monitor announce burnout in between, followed by a normal line. The
+logging design uses two entry points to handle lock ownership:
+
+- The public entry point is called without `sim_mtx` held. It locks
+  `sim_mtx`, delegates to the locked entry point, and unlocks `sim_mtx`.
+- The locked entry point assumes the caller already holds `sim_mtx`. It uses
+  `output_mtx` to print and returns with `sim_mtx` still held by the caller.
+
+This depends on what the caller already holds, not whether it is a coder or
+the monitor. Whenever both mutexes are needed, take `sim_mtx` first and
+`output_mtx` second, then release them in reverse order. Holding `sim_mtx`
+through the normal stop check and print prevents a burnout decision from
+slipping between them. Keep this protected work brief; printing can itself
+block, which is a tradeoff of this ordering.
+
+The monitor must be able to print its authorized burnout line after setting
+`end_sim`, while normal lines are suppressed after stop. How the interface
+expresses that distinction, handles failures, and supports the grouped
+compile-start output remains to be designed and tested.
+
+Our chosen output rule for a compile start is a group of three consecutive
+lines for the same coder: two `has taken a dongle` lines followed immediately
+by `is compiling`. Their timestamps need not be identical. The group must be
+coordinated with the pair grant, compile-start decision, and stop state; its
+locking interface is still to be designed and tested. This grouping is our
+project requirement; the subject explicitly illustrates the sequence but does
+not clearly require the lines to be adjacent.
 
 ### 8. Stopping and cleanup
 
@@ -335,7 +366,7 @@ Update this only after an item exists and has been tested.
 | Argument parser | Eight arguments, numeric validation, FIFO/EDF validation | Built; valid/invalid examples checked |
 | Initial allocation | Coder/dongle arrays allocated and freed | Normal runs and both injected allocation failures passed Valgrind |
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
-| Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; synchronization behaviour not yet implemented |
+| Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; runtime synchronization behaviour not yet implemented |
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
 | Logging | Not implemented | Not started |
 | Heap scheduler | Not implemented | Not started |
