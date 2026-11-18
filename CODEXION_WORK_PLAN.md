@@ -181,9 +181,10 @@ handled. Revisit plausible failures and cleanup before evaluation.
   User tested 200 ms and zero-duration waits, an already-stopped simulation,
   and a 1000 ms threaded wait interrupted after about 100 ms. The threaded
   test used a sleep rather than a handshake to establish waiter readiness.
-- [ ] Test concurrent normal logger serialization and suppression after a stop.
-  State lines go to `stdout` without colour or extra wording; errors go to
-  `stderr`. Burnout-specific ordering is tested with the monitor in Phase 5.
+- [x] Exercise concurrent normal logging and suppression after a stop. The
+  user's three-thread test produced complete lines before stop, interrupted
+  waits, and no normal line from the thread started afterward. Broader stress
+  testing and burnout-specific ordering remain for later validation.
 - [ ] Before evaluation, review clock, lock/unlock, and output failure handling,
   propagation and cleanup; avoid treating a failed lock as acquired.
   `current_time_ms()` checks its `CLOCK_MONOTONIC` read, reports failure, and
@@ -193,7 +194,7 @@ handled. Revisit plausible failures and cleanup before evaluation.
   check `clock_gettime(CLOCK_REALTIME, ...)`; on failure its `timespec` is not
   a valid deadline. Decide how to handle both when reviewing runtime errors.
 
-**Exit checkpoint:** the stop helper and interruptible waits are tested, and
+**Exit checkpoint — complete:** the stop helper and interruptible waits are tested, and
 normal logging tests cover formatting, serialization, and stop suppression.
 Burnout-output ordering and worker action order are tested in Phase 5.
 

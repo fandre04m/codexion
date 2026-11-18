@@ -301,7 +301,7 @@ acquisition occurs before compile_start + time_to_compile + cooldown.
 
 Multiple threads can mix output characters. The initialized output mutex is
 intended to make each state message a complete, unmixed line. A first normal-line
-logger passed a single-thread test; concurrency remains untested. The stop check must be coordinated with
+logger passed single-thread and basic concurrent tests. The stop check must be coordinated with
 printing: checking `end_sim` and releasing its mutex before printing would let
 the monitor announce burnout in between, followed by a normal line. The
 logger has a `sim_mtx_held` flag: when false, it takes and releases `sim_mtx`;
@@ -319,8 +319,9 @@ partial sequence.
 
 The monitor must be able to print its authorized burnout line after setting
 `end_sim`, while normal lines are suppressed after stop. The flag-based lock
-ownership paths passed single-thread checks; concurrency, output buffering, and
-monitor timing remain to be tested.
+ownership paths passed single-thread checks; a three-thread test exercised normal
+logging and stop suppression. Broader stress, output buffering, and monitor
+timing remain to be tested.
 During development, detailed runtime error propagation is deferred; diagnostics
 can help investigate failures. Currently a failed clock read can lead to an
 invalid timestamp, and mutex/output failures are not handled. Revisit the
@@ -374,7 +375,7 @@ Update this only after an item exists and has been tested.
 | Time helpers | `current_time_ms` reads the monotonic clock and returns milliseconds, or `-1` on error; callers calculate elapsed time by subtraction | User checked elapsed time; failure path not injected |
 | Shared-state declarations | Known state, mutexes, and condition variable declared in the structs | Project builds; runtime synchronization behaviour not yet implemented |
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
-| Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Both ownership paths and stop suppression tested single-threaded; concurrency, error handling and monitor path remain |
+| Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Ownership paths and basic three-thread logging/stop suppression tested; stress, error handling and monitor path remain |
 | Stop helper | First stop records its reason and broadcasts; a flag describes mutex ownership | Both ownership paths and competing reasons checked; separate waiting-thread broadcast test passed Valgrind |
 | Phase waiting | `request_wait` waits until a monotonic phase deadline or stop, using a realtime condition-variable deadline | User tested normal, zero, already-stopped, and threaded interruption cases; waiter readiness was not synchronized by a handshake |
 | Heap scheduler | Not implemented | Not started |
