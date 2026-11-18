@@ -13,7 +13,7 @@
 NAME = codexion
 
 SRC = main.c utils.c parsing.c init.c safe_mutex.c safe_cond.c safe_thread.c \
-			cleaner.c logger.c stopper.c
+			cleaner.c logger.c stopper.c phase_wait.c
 
 OBJ = $(SRC:.c=.o)
 

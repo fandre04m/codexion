@@ -376,6 +376,7 @@ Update this only after an item exists and has been tested.
 | Initialization/cleanup | Simulation objects tracked by stage; dongle mutexes tracked by count; coder fields and circular references initialized | Simulated initialization failures cleaned up; user reports normal coder-initialization retest had no errors or leaks |
 | Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Both ownership paths and stop suppression tested single-threaded; concurrency, error handling and monitor path remain |
 | Stop helper | First stop records its reason and broadcasts; a flag describes mutex ownership | Both ownership paths and competing reasons checked; separate waiting-thread broadcast test passed Valgrind |
+| Phase waiting | `request_wait` waits until a monotonic phase deadline or stop, using a realtime condition-variable deadline | User tested normal, zero, already-stopped, and threaded interruption cases; waiter readiness was not synchronized by a handshake |
 | Heap scheduler | Not implemented | Not started |
 | Coder workers | Not implemented | Not started |
 | Burnout monitor | Not implemented | Not started |

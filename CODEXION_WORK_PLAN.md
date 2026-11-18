@@ -177,20 +177,25 @@ handled. Revisit plausible failures and cleanup before evaluation.
 - [x] Test stop requests with both lock-ownership paths and competing reasons;
   confirm only the first request reports a new stop. A separate threaded test
   confirmed a blocked waiter wakes; Valgrind reported no errors or leaks.
-- [ ] Design and test the monitor's authorized burnout output: while holding
-  `sim_mtx`, confirm burnout, request the stop, and print only if that request
-  recorded it. This path must work after `end_sim` is true and coordinate with
-  normal logging. The actual monitor thread is implemented in Phase 5.
-- [ ] Implement and test interruptible phase waiting (compile, debug, refactor)
-  so a stop wakes waiting workers.
-- [ ] Test concurrent logger serialization and stop ordering. State lines go
-  to `stdout` without colour or extra wording; errors go to `stderr`.
+- [x] Implement interruptible phase waiting (compile, debug, refactor).
+  User tested 200 ms and zero-duration waits, an already-stopped simulation,
+  and a 1000 ms threaded wait interrupted after about 100 ms. The threaded
+  test used a sleep rather than a handshake to establish waiter readiness.
+- [ ] Test concurrent normal logger serialization and suppression after a stop.
+  State lines go to `stdout` without colour or extra wording; errors go to
+  `stderr`. Burnout-specific ordering is tested with the monitor in Phase 5.
 - [ ] Before evaluation, review clock, lock/unlock, and output failure handling,
   propagation and cleanup; avoid treating a failed lock as acquired.
+  `current_time_ms()` checks its `CLOCK_MONOTONIC` read, reports failure, and
+  returns `-1`; `request_wait` currently does not check that return, which can
+  produce an invalid phase deadline or remaining time. Review other callers
+  such as `log_state` too. `request_wait` also does not
+  check `clock_gettime(CLOCK_REALTIME, ...)`; on failure its `timespec` is not
+  a valid deadline. Decide how to handle both when reviewing runtime errors.
 
 **Exit checkpoint:** the stop helper and interruptible waits are tested, and
-logging tests cover formatting, serialization, and burnout-stop ordering. Later
-worker integration must preserve each coder's action order.
+normal logging tests cover formatting, serialization, and stop suppression.
+Burnout-output ordering and worker action order are tested in Phase 5.
 
 ### 4. Implement the scheduler and cooldown
 
@@ -214,6 +219,10 @@ order, deterministic equal-deadline order, and a measurable cooldown delay.
 
 ### 5. Implement workers, monitor, and completion
 
+- [ ] Design and test the monitor's authorized burnout output: while holding
+  `sim_mtx`, confirm burnout, request the stop, and print only if that request
+  recorded it. This path works after `end_sim` is true and coordinates with
+  normal logging; test that no normal message follows the burnout line.
 - [ ] Start all coder threads and the separate monitor only after recording a
   common simulation start time and initializing every coder deadline.
 - [ ] Worker loop: request pair → log both acquisitions → record compile start

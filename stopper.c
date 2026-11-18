@@ -12,7 +12,7 @@
 
 #include "codexion.h"
 
-bool	stop_handler(t_sim *sim, t_stop_reason reason, bool sim_mtx_held)
+bool	record_stop(t_sim *sim, t_stop_reason reason, bool sim_mtx_held)
 {
 	bool	stop_recorded;
 

@@ -143,10 +143,15 @@ int			safe_cond_timedwait(t_cond *cond, t_mtx *mutex,
 int			safe_pthread_create(pthread_t *thread,
 				void *(*loop)(void *), void *coder);
 int			safe_pthread_join(pthread_t *thread);
-bool		stop_handler(t_sim *sim, t_stop_reason reason, bool sim_mtx_held);
 
 /*-------- Logging --------*/
 int			log_state(t_coder *coder, char *msg, bool sim_mtx_held);
+
+/*-------- Waiters --------*/
+bool		request_wait(t_sim *sim, long long to_wait);
+
+/*------- Stoppers --------*/
+bool		record_stop(t_sim *sim, t_stop_reason reason, bool sim_mtx_held);
 
 /*------- Cleaning --------*/
 int			clean_sim(t_sim *sim);

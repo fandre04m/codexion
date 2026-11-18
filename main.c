@@ -26,9 +26,7 @@ int	main(int ac, char **av)
 			clean_sim(&simulation);
 			return (1);
 		}
-		safe_mutex_handle(&simulation.sim_mtx, M_LOCK);
 		simulation.sim_start_time = current_time_ms();
-		safe_mutex_handle(&simulation.sim_mtx, M_UNLOCK);
 		if (clean_sim(&simulation))
 			return (1);
 	}
