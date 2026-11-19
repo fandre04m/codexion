@@ -12,12 +12,16 @@
 
 #include "codexion.h"
 
-static void	get_deadline(long long remaining_ms, struct timespec *realtime)
+static int	get_deadline(long long remaining_ms, struct timespec *realtime)
 {
-	long long	seconds;
-	long long	millisecs;
-	long long	nano_secs;
+	long long		seconds;
+	long long		millisecs;
+	long long		nano_secs;
 
+	if (clock_gettime(CLOCK_REALTIME, realtime))
+	{
+		return (error_msg("Realtime clock failed to get current time.", -1));
+	}
 	seconds = remaining_ms / 1000;
 	millisecs = remaining_ms % 1000;
 	nano_secs = millisecs * 1000000;
@@ -29,6 +33,7 @@ static void	get_deadline(long long remaining_ms, struct timespec *realtime)
 	}
 	else
 		realtime->tv_nsec += nano_secs;
+	return (0);
 }
 
 bool	request_wait(t_sim *sim, long long to_wait)
@@ -45,9 +50,12 @@ bool	request_wait(t_sim *sim, long long to_wait)
 	{
 		remaining_ms = phase_end - current_time_ms();
 		if (remaining_ms <= 0)
-			break;
-		clock_gettime(CLOCK_REALTIME, &realtime);
-		get_deadline(remaining_ms, &realtime);
+			break ;
+		if (get_deadline(remaining_ms, &realtime))
+		{
+			safe_mutex_handle(&sim->sim_mtx, M_UNLOCK);
+			return (phase_finished);
+		}
 		safe_cond_timedwait(&sim->state_changed, &sim->sim_mtx, &realtime);
 	}
 	if (!sim->end_sim && current_time_ms() >= phase_end)

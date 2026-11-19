@@ -18,7 +18,7 @@ long long	current_time_ms(void)
 	long long		now;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &curr_time))
-		return (error_msg("Clock failed to get current time.", -1));
+		return (error_msg("Monotonic clock failed to get current time.", -1));
 	now = (long long)curr_time.tv_sec * 1000 + (curr_time.tv_nsec / 1000000);
 	return (now);
 }

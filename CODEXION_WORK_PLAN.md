@@ -185,14 +185,6 @@ handled. Revisit plausible failures and cleanup before evaluation.
   user's three-thread test produced complete lines before stop, interrupted
   waits, and no normal line from the thread started afterward. Broader stress
   testing and burnout-specific ordering remain for later validation.
-- [ ] Before evaluation, review clock, lock/unlock, and output failure handling,
-  propagation and cleanup; avoid treating a failed lock as acquired.
-  `current_time_ms()` checks its `CLOCK_MONOTONIC` read, reports failure, and
-  returns `-1`; `request_wait` currently does not check that return, which can
-  produce an invalid phase deadline or remaining time. Review other callers
-  such as `log_state` too. `request_wait` also does not
-  check `clock_gettime(CLOCK_REALTIME, ...)`; on failure its `timespec` is not
-  a valid deadline. Decide how to handle both when reviewing runtime errors.
 
 **Exit checkpoint — complete:** the stop helper and interruptible waits are tested, and
 normal logging tests cover formatting, serialization, and stop suppression.
@@ -244,6 +236,10 @@ without hanging.
 
 ### 6. Validate, then document
 
+- [ ] Review error handling across the project before evaluation, including
+  clock, pthread, allocation, output, propagation, shutdown, and cleanup paths.
+  In particular, review callers of `current_time_ms()` that do not check `-1`,
+  and how a realtime-clock failure in `request_wait()` reaches the simulation.
 - [ ] Update `README.md` in English with a real Description, exact build/run
   syntax, an example for each scheduler, and accurate Resources/AI disclosure.
 - [ ] Add the required **Blocking cases handled** section: deadlock/Coffman
