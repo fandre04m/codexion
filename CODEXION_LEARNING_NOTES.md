@@ -271,6 +271,20 @@ request just because its other dongle happens to be ready first.
 
 The subject requires a custom priority queue implemented as a binary heap. A heap is an array with a special ordering rule: the current best request sits at index 0.
 
+#### Binary heap refresher
+
+The tree is a visualization of array positions; it needs no parent/child
+pointers. A min-heap keeps each parent at least as high in priority as its
+children. Siblings and the array as a whole are not necessarily sorted.
+
+    index i: parent = (i - 1) / 2, children = 2 * i + 1 and 2 * i + 2
+
+Insert at the end, then swap upward with the parent while the new item has
+higher priority. To remove the root, save it, move the last item to the root,
+then swap downward with the higher-priority child until the rule holds. The
+scheduler supplies the FIFO/EDF comparison and decides which grants are legal;
+the heap only organizes its entries by priority.
+
 ## Discussed concepts awaiting implementation
 
 ### 6. Cooldown
