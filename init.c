@@ -41,11 +41,14 @@ static void	init_coders(t_sim *sim)
 	{
 		coder = sim->coders + i;
 		coder->coder_id = i + 1;
-		coder->n_compiles = 0;
-		coder->finished = false;
 		coder->last_comp_start = 0;
 		coder->left_dongle = &sim->dongles[i];
 		coder->right_dongle = &sim->dongles[(i + 1) % sim->n_coders];
+		coder->n_compiles = 0;
+		coder->finished = false;
+		coder->req_state = NOT_SUBMITTED;
+		coder->req_oder = 0;
+		coder->deadline = 0;
 		coder->sim = sim;
 	}
 }
@@ -63,6 +66,7 @@ int	init_data(t_sim *sim)
 	sim->clean_stage = CLEAN_OUTPUT;
 	sim->end_sim = false;
 	sim->stop_reason = STOP_NONE;
+	sim->next_req_order = 1;
 	sim->dongles = malloc(sizeof(t_dongle) * sim->n_coders);
 	if (!sim->dongles)
 		return (error_msg("Dongles malloc failed.", 1));

@@ -80,6 +80,13 @@ typedef enum e_clean_stage
 	CLEAN_OUTPUT
 }	t_clean_stage;
 
+typedef enum e_req_state
+{
+	NOT_SUBMITTED,
+	PENDING,
+	GRANTED
+}	t_req_state;
+
 /*-------- Structs --------*/
 typedef struct s_dongle
 {
@@ -92,11 +99,14 @@ typedef struct s_dongle
 typedef struct s_coder
 {
 	int			coder_id;
-	int			n_compiles;
-	bool		finished;
 	long long	last_comp_start;
 	t_dongle	*left_dongle;
 	t_dongle	*right_dongle;
+	int			n_compiles;
+	bool		finished;
+	t_req_state	req_state;
+	long long	req_oder;
+	long long	deadline;
 	pthread_t	thread_id;
 	t_sim		*sim;
 }	t_coder;
@@ -122,6 +132,7 @@ struct s_sim
 	t_mtx			output_mtx;
 	t_clean_stage	clean_stage;
 	int				dongle_init;
+	long long		next_req_order;
 };
 
 /*--------- Utils ---------*/
