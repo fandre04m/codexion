@@ -211,28 +211,25 @@ If every coder takes one dongle and waits for another, all can become stuck:
     Coder 2 holds left dongle and waits for right.
     ...
 
-The design goal is that a worker never physically holds one dongle indefinitely while waiting for its second. The scheduler makes one controlled decision to grant both required dongles, then the worker logs two acquisitions and starts compiling.
+For multiple coders, the design goal is that a worker never physically holds one dongle indefinitely while waiting for its second. The scheduler makes one controlled decision to grant both required dongles, then the worker logs two acquisitions and starts compiling. The evaluation's one-coder case deliberately takes only the sole dongle and waits for burnout.
 
 If dongle A is ready at 20 ms and B at 50 ms, compiling cannot begin before 50 ms. Taking A early does not help that coder compile earlier, but it can prevent another coder from using A.
 
 ### Priority still comes first
 
 The subject requires FIFO/EDF when multiple coders request the same dongle.
-Whether to use one central heap or per-dongle heaps remains open; compare how
-each handles unrelated requests, blocked requests, and EDF liveness after
-checking the evaluation sheet. The subject does not explicitly specify the
-number of heaps.
+Our working design uses one heap per dongle: each heap directly shows its
+highest-priority pending requester. The subject does not explicitly specify
+the number of heaps; we chose this approach because its per-dongle priority
+and atomic pair checks are easier for us to understand.
 
-Suppose coder 2 has priority for dongles 2 and 3. Dongle 2 is free, dongle 3 is unavailable, and coder 1 also wants dongle 2. Coder 1 must not borrow dongle 2 ahead of coder 2 merely because it might return it before dongle 3 is ready. That would make priority depend on luck and could delay the higher-priority coder until burnout.
+Suppose coder 2 has priority for dongles 2 and 3. Dongle 2 is free, dongle 3 is unavailable, and coder 1 also wants dongle 2. Under our working strict-priority interpretation, coder 1 cannot borrow dongle 2 ahead of coder 2. This can leave a dongle idle but prevents a lower-priority use from delaying coder 2.
 
-The scheduler could explicitly mark dongle 2 as reserved for coder 2, or derive
-coder 2's priority from pending requests without storing a reservation. Both
-approaches remain open until the heap design. Either way, a worker does not
-physically hold a dongle while waiting for its partner, and an unrelated pair
-can still be granted. The exact fairness interpretation needs testing against
-the subject.
-
-This can leave a dongle briefly idle. It is an acceptable tradeoff because predictable per-dongle fairness is a stated requirement.
+The scheduler can derive priority from the heap heads; whether additional
+reservation bookkeeping is needed remains open. A request for an unrelated
+pair can still be granted. Strict priority is our interpretation of the
+fairness wording, not a proven liveness guarantee: test it with the evaluation
+timings and revisit it if necessary.
 
 ### Atomic means one protected scheduler decision
 
@@ -249,8 +246,9 @@ half-finished assignment.
                 assign the pair state together
             release the scheduler mutex
 
-No worker physically holds one dongle while waiting for its partner. If used,
-a reservation is scheduler bookkeeping only.
+No multi-coder worker physically holds one dongle while waiting for its partner.
+The one-coder evaluation case is a separate exception. If used, a reservation
+is scheduler bookkeeping only.
 
 ### FIFO, EDF, and the heap
 
@@ -260,14 +258,31 @@ Each waiter has a scheduler request.
 - EDF: smaller burnout deadline wins.
 - Equal EDF deadline: request sequence, then coder ID.
 
-A request is created when a coder starts trying to obtain its pair. It records
-the coder, required dongles, arrival sequence, and current burnout deadline.
-That deadline stays fixed while the request waits because the coder has not
-started another compile in the meantime.
+A coder owns one reusable request. On submission it records a coder reference,
+arrival sequence, and a snapshot of its burnout deadline, calculated from
+protected `last_comp_start` plus `time_burnout`. The coder reference gives
+access to its two dongles. Each required dongle's heap points to that same
+request; the request must remain valid and its comparison keys unchanged until
+both heap references are removed.
+
+The proposed request states are `NOT_SUBMITTED`, `PENDING`, and `GRANTED`:
+
+    NOT_SUBMITTED -> PENDING -> GRANTED -> NOT_SUBMITTED
+
+`PENDING` means the request is in both heaps; a protected atomic pair grant
+removes both references and marks it `GRANTED`. After release, it can return to
+`NOT_SUBMITTED` and later be reused. Cancellation and shutdown transitions
+still need design. The state and heap operations are protected by `sim_mtx`.
+
+There is no separate scheduler thread in this design. Workers execute shared
+scheduler code and wait on `state_changed` when blocked. A broadcast prompts
+them to recheck; a cooldown may require a timed wake-up even if nobody else
+signals. The exact wake-up and deadline rules still need design and tests.
 
 Fairness applies when requests share a dongle. Coders needing separate pairs
-may both proceed. A lower-priority request cannot bypass a higher-priority
-request just because its other dongle happens to be ready first.
+may both proceed. Under our working policy, a lower-priority request cannot
+bypass a higher-priority pending request on a shared dongle just because its
+other dongle happens to be ready first.
 
 The subject requires a custom priority queue implemented as a binary heap. A heap is an array with a special ordering rule: the current best request sits at index 0.
 

@@ -6,12 +6,13 @@
 > Use `CODEXION_LEARNING_NOTES.md` alongside this plan for plain-language
 > explanations and the implementation journal.
 
-## Current snapshot — 2026-11-16
+## Current snapshot — 2026-11-20
 
 The current program parses arguments, initializes the simulation and its
 coders and dongles, then cleans up and exits. It has a monotonic millisecond
-helper, but does not start threads or print simulation state. The next step is
-Phase 3: logging and lifecycle primitives. An example invocation is:
+helper, logger, stop helper, and interruptible phase wait, but does not start
+the simulation threads. The next step is Phase 4: design and develop the
+scheduler. An example invocation is:
 
 ```sh
 ./codexion 5 800 100 100 100 5 50 fifo
@@ -79,8 +80,9 @@ explanation makes sense.
   pass a monotonic timestamp directly to that wait.
 - [x] **Atomic pair assignment.** Understood: a scheduler-protected decision
   grants access only when both required dongles are available. A higher-priority
-  request may wait for its partner, but no worker physically holds only one
-  dongle; no other scheduler action can interleave with the pair decision.
+  request may wait for its partner, but a multi-coder worker does not hold only
+  one dongle while waiting; no scheduler action can interleave with the pair
+  decision. The evaluation's single-coder case is a separate exception.
 - [x] **Cooldown.** Understood: releasing a dongle sets
   `ready_at = release_time + dongle_cooldown`; it cannot be assigned before
   that time even when `in_use` is false. A request may wait through the
@@ -119,9 +121,9 @@ in later phases where their full prerequisites are initialized and testable.
 **Working locking approach:** the state/scheduler mutex protects scheduling
 decisions, coder state, and stop state; its condition variable wakes waiters.
 Pair grants use that mutex, then the needed dongle mutexes in ascending ID
-order. The central heap versus per-dongle heaps and the treatment of blocked
-requests remain open; compare fairness, unrelated progress, and EDF liveness
-against the subject and evaluation sheet before implementation.
+order. Per-dongle heaps and strict priority for pending requests are the current
+working direction; validate fairness, unrelated progress, and EDF liveness
+against the subject and evaluation timings as the design develops.
 
 **Exit checkpoint — complete:** you can describe, in your own words, (1) what a mutex and
 a condition variable do here, (2) why one-at-a-time acquisition can deadlock,
@@ -192,23 +194,76 @@ Burnout-output ordering and worker action order are tested in Phase 5.
 
 ### 4. Implement the scheduler and cooldown
 
-- [ ] Implement the required custom binary heap: storage, compare, push, peek,
-  pop, and removal/cancellation of a stopped request. Do not use a library
-  priority queue.
-- [ ] Assign a strictly increasing request sequence while holding the scheduler
-  lock; calculate the EDF deadline from protected coder state.
-- [ ] Dispatch only an entitled request whose required dongles are both available
-  and past `ready_at`; grant both atomically, then wake its coder. Allow
-  unrelated eligible pairs to proceed even when a higher-priority pair waits.
-- [ ] On release, set each dongle's `ready_at` to release time plus cooldown,
-  update any scheduler bookkeeping, notify waiters, and prevent early grants.
-- [ ] Ensure each coder logs its two dongle acquisitions before compiling;
-  other coders' lines may occur between them.
-- [ ] Specify the one-coder path: it can take the sole dongle but cannot obtain
-  a second one, so the monitor must report burnout without a deadlock.
+**Working design:** each coder owns one reusable request; each dongle has a
+heap containing references to its pending requesters. A request stores its coder,
+FIFO arrival sequence, and EDF deadline snapshot; the comparison depends on
+the selected policy. A request state distinguishes not submitted, pending,
+and granted. Scheduler operations are shared code executed by workers under
+`sim_mtx`, not a separate scheduler thread. The exact C fields and interfaces
+are to be discussed as each step is reached.
 
-**Exit checkpoint:** focused runs demonstrate FIFO request order, EDF priority
-order, deterministic equal-deadline order, and a measurable cooldown delay.
+The strict per-dongle rule—grant only when the request is first for both
+dongles—is a working interpretation, not a proven consequence of the subject.
+Keep unrelated pairs eligible and test the policy against the evaluation timings
+and EDF liveness. Whether additional reservation bookkeeping is needed remains
+open; priority must not be lost merely because a request waits for its pair.
+
+#### 4.1 Requests and data ownership
+
+- [ ] Discuss and declare the request record, its coder reference, fixed
+  arrival/deadline keys, and `NOT_SUBMITTED`, `PENDING`, `GRANTED` states.
+- [ ] Decide how each per-dongle heap stores request references, its capacity,
+  and how queues are initialized and cleaned up. Account for partial failures.
+- [ ] Specify the state transitions, lock ownership, shutdown/cancellation,
+  and lifetime: do not reuse a request while either heap still refers to it.
+
+**Checkpoint:** explain the ownership and lifecycle using one coder and two
+dongles; the declarations and initialization build and clean up safely.
+
+#### 4.2 Priority and heap operations
+
+- [ ] Implement and test one comparator: FIFO by original request sequence;
+  EDF by stored burnout deadline, then sequence and coder ID as tie-breakers.
+  Assign the sequence and snapshot the deadline under `sim_mtx` on submission.
+- [ ] Implement the custom array-backed heap operations needed by the design
+  (including push, peek, pop, and removal/cancellation where required).
+- [ ] Test empty, single-entry, insertion, removal, FIFO, EDF, and equal-deadline
+  cases. Verify priority keys stay unchanged while requests are in the heaps.
+
+**Checkpoint:** focused heap tests pass before scheduler grants are added.
+
+#### 4.3 Submit, wait, and grant pairs
+
+- [ ] Insert one request into both required dongle heaps as a coordinated
+  operation. Decide rollback behavior if insertion cannot be completed.
+- [ ] Check that the request heads both heaps, both distinct dongles are free
+  and past cooldown, and the simulation is still running. Coordinate deadline
+  checks with the monitor so an expired coder cannot start a new compile.
+- [ ] Under `sim_mtx` and the relevant dongle mutexes in ascending ID order,
+  remove both heap references, grant both dongles, and mark the request granted
+  as one decision. Wake waiters after relevant state changes.
+- [ ] Design worker condition waits and cooldown timed waits so a blocked worker
+  rechecks on changes and an appropriate waiter wakes when cooldown ends even
+  without another event. Establish the clock and timeout limitations.
+- [ ] Test shared-dongle ordering, an unrelated pair progressing while another
+  waits, later EDF arrivals, stop while pending, and safe removal from both heaps.
+
+**Checkpoint:** focused scheduler tests show correct grants and no stuck waiters;
+the full worker and monitor integration remains Phase 5.
+
+#### 4.4 Release, cooldown, and single coder
+
+- [ ] Release both granted dongles safely, set `ready_at` from release time plus
+  cooldown, update request state, and notify waiters. Test zero and nonzero
+  cooldown and ensure no early reuse.
+- [ ] Design the evaluation's single-coder exception: take and log the sole
+  dongle, never treat it as a pair or lock it twice, then wait for monitor
+  burnout and clean up. Verify the final behavior during Phase 5 integration.
+
+**Exit checkpoint:** focused tests demonstrate FIFO/EDF priority, deterministic
+ties, unrelated progress, correct atomic grants, cancellation, and cooldown.
+The evaluation's no-burnout timings and one-coder burnout are validated once
+the worker and monitor exist; their results may require revisiting the policy.
 
 ### 5. Implement workers, monitor, and completion
 
