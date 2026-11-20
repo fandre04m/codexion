@@ -37,6 +37,7 @@
 typedef pthread_mutex_t	t_mtx;
 typedef pthread_cond_t	t_cond;
 typedef struct s_sim	t_sim;
+typedef struct s_coder	t_coder;
 
 /*--------- Enums ---------*/
 
@@ -94,9 +95,11 @@ typedef struct s_dongle
 	bool		in_use;
 	long long	ready_at;
 	t_mtx		dongle_mtx;
+	t_coder		*wait_heap[2];
+	int			count;
 }	t_dongle;
 
-typedef struct s_coder
+struct s_coder
 {
 	int			coder_id;
 	long long	last_comp_start;
@@ -105,11 +108,11 @@ typedef struct s_coder
 	int			n_compiles;
 	bool		finished;
 	t_req_state	req_state;
-	long long	req_oder;
+	long long	req_order;
 	long long	deadline;
 	pthread_t	thread_id;
 	t_sim		*sim;
-}	t_coder;
+};
 
 struct s_sim
 {

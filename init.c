@@ -26,6 +26,7 @@ static int	init_dongles(t_sim *sim)
 		dongle->ready_at = 0;
 		if (safe_mutex_handle(&dongle->dongle_mtx, M_INIT))
 			return (1);
+		dongle->count = 0;
 		sim->dongle_init = i + 1;
 	}
 	return (0);
@@ -47,7 +48,7 @@ static void	init_coders(t_sim *sim)
 		coder->n_compiles = 0;
 		coder->finished = false;
 		coder->req_state = NOT_SUBMITTED;
-		coder->req_oder = 0;
+		coder->req_order = 0;
 		coder->deadline = 0;
 		coder->sim = sim;
 	}

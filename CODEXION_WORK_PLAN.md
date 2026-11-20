@@ -194,13 +194,11 @@ Burnout-output ordering and worker action order are tested in Phase 5.
 
 ### 4. Implement the scheduler and cooldown
 
-**Working design:** each coder owns one reusable request; each dongle has a
-heap containing references to its pending requesters. A request stores its coder,
-FIFO arrival sequence, and EDF deadline snapshot; the comparison depends on
-the selected policy. A request state distinguishes not submitted, pending,
-and granted. Scheduler operations are shared code executed by workers under
-`sim_mtx`, not a separate scheduler thread. The exact C fields and interfaces
-are to be discussed as each step is reached.
+**Working design:** request fields live directly in each coder; each dongle
+has a two-slot heap of pointers to its pending coders. The coder stores the FIFO
+arrival order, EDF deadline snapshot, and not-submitted/pending/granted state.
+The comparator depends on the selected policy. Scheduler operations are shared
+code executed by workers under `sim_mtx`, not a separate scheduler thread.
 
 The strict per-dongle rule—grant only when the request is first for both
 dongles—is a working interpretation, not a proven consequence of the subject.
@@ -210,10 +208,11 @@ open; priority must not be lost merely because a request waits for its pair.
 
 #### 4.1 Requests and data ownership
 
-- [ ] Discuss and declare the request record, its coder reference, fixed
-  arrival/deadline keys, and `NOT_SUBMITTED`, `PENDING`, `GRANTED` states.
-- [ ] Decide how each per-dongle heap stores request references, its capacity,
-  and how queues are initialized and cleaned up. Account for partial failures.
+- [x] Declare and initialize coder request fields: arrival order, deadline,
+  and `NOT_SUBMITTED`, `PENDING`, `GRANTED` states; initialize the shared next
+  request-order counter.
+- [x] Declare a two-slot coder-pointer heap and initialize its count in each
+  dongle. Storage is embedded, so it needs no separate allocation or free.
 - [ ] Specify the state transitions, lock ownership, shutdown/cancellation,
   and lifetime: do not reuse a request while either heap still refers to it.
 
@@ -222,9 +221,12 @@ dongles; the declarations and initialization build and clean up safely.
 
 #### 4.2 Priority and heap operations
 
-- [ ] Implement and test one comparator: FIFO by original request sequence;
+- [ ] Correct and test `has_priority`: its current `strcmp(..., "fifo")`
+  condition reverses FIFO/EDF. FIFO uses original request order;
   EDF by stored burnout deadline, then sequence and coder ID as tie-breakers.
   Assign the sequence and snapshot the deadline under `sim_mtx` on submission.
+- [ ] Add `scheduler.c` to the build when ready; it currently compiles on its
+  own but is not included in `SRC`. Resolve its Norminette indentation errors.
 - [ ] Implement the custom array-backed heap operations needed by the design
   (including push, peek, pop, and removal/cancellation where required).
 - [ ] Test empty, single-entry, insertion, removal, FIFO, EDF, and equal-deadline

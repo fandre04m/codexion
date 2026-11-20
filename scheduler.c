@@ -12,4 +12,14 @@
 
 #include "codexion.h"
 
-
+bool	has_priority(t_coder *a, t_coder *b)
+{
+	if (strcmp(a->sim->scheduler, "fifo"))
+		return (a->req_order < b->req_order);
+	else
+		if (a->deadline != b->deadline)
+			return (a->deadline < b->deadline);
+		if (a->req_order != b->req_order)
+			return (a->req_order < b->req_order);
+		return (a->coder_id < b->coder_id);
+}

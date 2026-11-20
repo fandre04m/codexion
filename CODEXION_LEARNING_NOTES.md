@@ -258,12 +258,17 @@ Each waiter has a scheduler request.
 - EDF: smaller burnout deadline wins.
 - Equal EDF deadline: request sequence, then coder ID.
 
-A coder owns one reusable request. On submission it records a coder reference,
-arrival sequence, and a snapshot of its burnout deadline, calculated from
-protected `last_comp_start` plus `time_burnout`. The coder reference gives
-access to its two dongles. Each required dongle's heap points to that same
-request; the request must remain valid and its comparison keys unchanged until
-both heap references are removed.
+A coder stores its reusable request fields directly in `t_coder`: `req_order`,
+`deadline`, and `req_state`. On submission, it will receive an arrival order
+and a burnout-deadline snapshot calculated from protected `last_comp_start`
+plus `time_burnout`. Each required dongle's heap stores a pointer to that same
+coder. The coder must remain valid and its comparison keys unchanged until both
+heap entries are removed.
+
+Each dongle has an embedded two-slot `wait_heap` and a `count` initialized to
+zero. Its at-most-two neighboring coders can each have one pending request;
+empty slots need not be read. This storage needs no separate allocation. The
+one-coder path remains special.
 
 The proposed request states are `NOT_SUBMITTED`, `PENDING`, and `GRANTED`:
 
@@ -407,7 +412,7 @@ Update this only after an item exists and has been tested.
 | Logging | Normal-line logger has a flag for caller-held `sim_mtx` | Ownership paths and basic three-thread logging/stop suppression tested; stress, error handling and monitor path remain |
 | Stop helper | First stop records its reason and broadcasts; a flag describes mutex ownership | Both ownership paths and competing reasons checked; separate waiting-thread broadcast test passed Valgrind |
 | Phase waiting | `request_wait` waits until a monotonic phase deadline or stop, using a realtime condition-variable deadline | User tested normal, zero, already-stopped, and threaded interruption cases; waiter readiness was not synchronized by a handshake |
-| Heap scheduler | Not implemented | Not started |
+| Heap scheduler | Coder request fields and two-slot dongle heap storage declared; comparator drafted | Comparator reverses FIFO/EDF due to `strcmp` check and needs correction and tests; heap operations not implemented |
 | Coder workers | Not implemented | Not started |
 | Burnout monitor | Not implemented | Not started |
 | README/test suite | Not implemented | Not started |
